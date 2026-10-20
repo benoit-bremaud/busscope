@@ -5,6 +5,10 @@
 `can-sniffer` is a Linux desktop application for monitoring Infypower charger CAN traffic.
 The first release is read-only and targets CAN 2.0B extended frames at 125 kbit/s.
 
+The project is growing into a listen-only multi-bus USB box for EV-charging equipment plus a
+desktop application (see [`docs/decisions/`](docs/decisions/README.md), ADR-0002). The current
+PySide6 CAN monitor stays the shipped application until the new UI replaces it.
+
 ## Workflow
 
 - Work from an Issue and a dedicated branch.

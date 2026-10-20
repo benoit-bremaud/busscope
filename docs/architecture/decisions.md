@@ -1,5 +1,8 @@
 # Architecture decisions
 
+> **Frozen on 2026-10-19.** New decisions are ADRs under [`docs/decisions/`](../decisions/README.md);
+> the entries below stay valid until an ADR supersedes one of them.
+
 ## 2026-09-01 - Read-only first
 
 The first milestone observes the charger bus in listen-only mode. Transmission is excluded
