@@ -64,7 +64,8 @@ SHAs are 7-character merge (or squash) commits on `main`.
 
 ## 2026-09-09
 
-- **PR #46 merged** (`8c13409`) — `docs(bench/architecture): add ESP32-C3 CAN bench design`.
+- **PR #46 merged** (`8c13409`) — `docs(bench/architecture): add ESP32-C3 CAN bench design`
+  (`codex/45-esp32c3-bench-design`).
 
 ## 2026-09-11
 
