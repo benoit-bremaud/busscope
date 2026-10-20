@@ -116,3 +116,5 @@ ordinary commits from that PR's branch.
   (`docs/61-docstring-coverage`, closes #61). 34 docstrings added (interrogate 79.8 % → 100 %);
   interrogate pinned with `fail-under = 90` and enforced in the quality workflow. Format drift
   found during the gate tracked in #64. GitHub Project "can-sniffer" created as the kanban.
+- **PR #65 merged** (`f6b2c49`) — `docs(log): record PR #63 in the project log`
+  (`docs/63-project-log-pr63`). Adds the PR #63 entry above.
