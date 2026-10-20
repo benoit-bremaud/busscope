@@ -7,7 +7,9 @@ PR #57 were reconstructed retroactively (2026-10-20) from `git log`, merged pull
 releases, `CHANGELOG.md` and the ADR register in [`docs/decisions/`](docs/decisions/README.md),
 and checked against GitHub.
 
-SHAs are 7-character merge (or squash) commits on `main`.
+SHAs are 7-character. The SHA right after a PR number is that PR's merge (or squash) commit
+on `main`; `a048e4a` is the direct root commit; SHAs cited inside an entry's narrative are
+ordinary commits from that PR's branch.
 
 ## 2026-09-01
 
