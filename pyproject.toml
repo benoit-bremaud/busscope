@@ -19,7 +19,13 @@ dependencies = [
 can-sniffer = "can_sniffer.app:main"
 
 [project.optional-dependencies]
-dev = ["mypy>=1.14,<2", "pytest>=8.3,<9", "pytest-cov>=6,<7", "ruff>=0.9,<1"]
+dev = [
+    "interrogate>=1.7,<2",
+    "mypy>=1.14,<2",
+    "pytest>=8.3,<9",
+    "pytest-cov>=6,<7",
+    "ruff>=0.9,<1",
+]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/can_sniffer"]
@@ -27,6 +33,13 @@ packages = ["src/can_sniffer"]
 [tool.pytest.ini_options]
 addopts = "--strict-markers --strict-config --cov=can_sniffer --cov-report=term-missing --cov-fail-under=90"
 testpaths = ["tests"]
+
+[tool.interrogate]
+# Docstring floor of the pre-merge gate; enforced in CI so it cannot silently drift again.
+fail-under = 90
+ignore-init-module = true
+exclude = ["tests"]
+verbose = 1
 
 [tool.ruff]
 line-length = 100
