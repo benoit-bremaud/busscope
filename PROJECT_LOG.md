@@ -112,3 +112,7 @@ ordinary commits from that PR's branch.
   found below the floor on `main` during the local review; tracked in #61.
 - **PR #62 merged** (`8d0e32e`) — `docs(log): record PR #60 in the project log`
   (`docs/59-project-log-pr60`). Adds the PR #60 entry above.
+- **PR #63 merged** (`11bad35`) — `docs(src): raise docstring coverage to the 90 % floor`
+  (`docs/61-docstring-coverage`, closes #61). 34 docstrings added (interrogate 79.8 % → 100 %);
+  interrogate pinned with `fail-under = 90` and enforced in the quality workflow. Format drift
+  found during the gate tracked in #64. GitHub Project "can-sniffer" created as the kanban.
