@@ -1,9 +1,10 @@
 # Architecture Decision Records
 
 Nygard format, one file per decision, `ADR-NNNN-<slug>.md`. A decision is changed only by a
-superseding ADR. Every ADR records the options studied and the weighted scoring (MCDA, weights
+superseding ADR. Every ADR that chooses between alternatives records the options studied and the weighted scoring (MCDA, weights
 summing to 100, scores 0–5, totals out of 500) that led to the choice, and names the runner-up
-kept as the fallback, so the reasoning can be re-examined when the context changes.
+kept as the fallback, so the reasoning can be re-examined when the context changes. Framing ADRs (process, scope, policy, such as ADR-0001, ADR-0002 and
+ADR-0007) state the decision and its consequences without a scoring table.
 
 Decisions taken before this register existed stay in
 [`docs/architecture/decisions.md`](../architecture/decisions.md), which is now frozen.

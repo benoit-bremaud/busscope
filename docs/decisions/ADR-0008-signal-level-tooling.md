@@ -37,6 +37,8 @@ isolation and no protection.
 ## Consequences
 
 - The logic tap is a box requirement; its isolation is part of the high-voltage review.
-- Neither the AD3 nor a bench oscilloscope is isolated: on a charger, use a laptop on battery or
-  an isolated USB hub.
+- Neither the AD3 nor a bench oscilloscope is isolated. For the USB-powered AD3 and FX2, power the
+  laptop from battery or use an isolated USB hub. A mains-powered bench oscilloscope keeps its
+  probe ground bonded to protective earth whatever the laptop does: on a charger it needs a rated
+  isolated or differential probe, or a battery-powered isolated-channel instrument.
 - The scope column rests mostly on estimates; to be re-scored if a model is considered.

@@ -36,8 +36,9 @@ web app (PySide6 400).
 
 **Electron + React + TypeScript for the UI, the existing Python core kept as a local service.**
 Electron's main process starts the core as a child process; the renderer talks to it through a
-minimal preload API; the core alone opens hardware and enforces listen-only. The guarded single-frame transmission of
-2026-09-04 is not exposed in the new UI until a dedicated ADR ports it; on the box it stays
+minimal preload API; the core alone opens hardware and captures listen-only by default. The guarded single-frame
+transmission of 2026-09-04 stays a valid decision and remains in the current PySide6 application;
+it is not exposed in the new UI until a dedicated ADR ports it with the same safeguards; on the box it stays
 impossible while transmit paths are disabled in hardware. Commands use
 JSON-RPC; frames are streamed in batches (about every 50 ms), never one message per frame.
 
