@@ -259,9 +259,7 @@ def test_window_rejects_live_capture_until_replay_is_reset(qt_application: QAppl
     del qt_application
     window = create_test_window(FakeController([]))
     window._replay.load(
-        (
-            CapturedFrame(0.0, DecodeResult(CanFrame(0x123, b"\x00"), None, "Frame")),
-        )
+        (CapturedFrame(0.0, DecodeResult(CanFrame(0x123, b"\x00"), None, "Frame")),)
     )
     window._replay.play()
 
@@ -370,9 +368,7 @@ def test_window_uses_one_timestamp_origin_across_capture_sessions(
     qt_application: QApplication,
 ) -> None:
     del qt_application
-    controller = FakeController(
-        [DecodeResult(CanFrame(0x123, b"\x00"), None, "First")]
-    )
+    controller = FakeController([DecodeResult(CanFrame(0x123, b"\x00"), None, "First")])
     window = create_test_window(controller)
 
     window.start_capture()
@@ -718,9 +714,7 @@ def test_window_selects_backend_and_states_the_expected_channel_form(
 
     # The chosen backend must reach the capture configuration, not just the widget.
     assert controller.configurations == [
-        CaptureConfiguration(
-            channel="/dev/serial/by-id/usb-CANable", interface=CanInterface.SLCAN
-        )
+        CaptureConfiguration(channel="/dev/serial/by-id/usb-CANable", interface=CanInterface.SLCAN)
     ]
 
 
@@ -735,9 +729,7 @@ def test_window_scopes_the_unverified_silence_acceptance_to_slcan(
     # socketcan is verifiable, so accepting an unverifiable silence is meaningless there.
     assert window.unverified_silence_input.isEnabled() is False
 
-    window.interface_input.setCurrentIndex(
-        window.interface_input.findData(CanInterface.SLCAN)
-    )
+    window.interface_input.setCurrentIndex(window.interface_input.findData(CanInterface.SLCAN))
     assert window.unverified_silence_input.isEnabled() is True
     window.unverified_silence_input.setChecked(True)
     window.channel_input.setText("/dev/serial/by-id/usb-CANable")
@@ -752,7 +744,5 @@ def test_window_scopes_the_unverified_silence_acceptance_to_slcan(
     ]
 
     # Going back to a verifiable backend clears it, so it cannot silently return.
-    window.interface_input.setCurrentIndex(
-        window.interface_input.findData(CanInterface.SOCKETCAN)
-    )
+    window.interface_input.setCurrentIndex(window.interface_input.findData(CanInterface.SOCKETCAN))
     assert window.unverified_silence_input.isChecked() is False

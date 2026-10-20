@@ -69,9 +69,7 @@ class CsvCaptureLoader:
                 for diagnostic in (row["diagnostics"] or "").split(";")
                 if diagnostic.strip()
             )
-            decoded = decoder.decode(
-                CanFrame(arbitration_id, data, is_extended_id, is_error_frame)
-            )
+            decoded = decoder.decode(CanFrame(arbitration_id, data, is_extended_id, is_error_frame))
             result = replace(
                 decoded,
                 description=description,

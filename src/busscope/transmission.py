@@ -32,9 +32,10 @@ class ManualTransmission:
         normalized_identifier = identifier.strip()
         if normalized_identifier.lower().startswith("0x"):
             normalized_identifier = normalized_identifier[2:]
-        if not normalized_identifier or re.fullmatch(
-            r"[0-9A-Fa-f]+", normalized_identifier
-        ) is None:
+        if (
+            not normalized_identifier
+            or re.fullmatch(r"[0-9A-Fa-f]+", normalized_identifier) is None
+        ):
             raise ValueError("CAN identifier must be hexadecimal")
 
         tokens = payload.split()

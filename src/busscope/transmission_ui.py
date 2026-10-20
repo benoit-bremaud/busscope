@@ -87,9 +87,7 @@ class TransmissionWidget(QWidget):
         """Toggle the send button and tell the operator the current state."""
         self.send_button.setEnabled(enabled)
         self.status_label.setText(
-            "Manual transmission enabled"
-            if enabled
-            else "Manual transmission is disabled"
+            "Manual transmission enabled" if enabled else "Manual transmission is disabled"
         )
 
     @staticmethod

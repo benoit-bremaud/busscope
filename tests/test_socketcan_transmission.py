@@ -45,8 +45,7 @@ def request() -> ManualTransmission:
     "state",
     [
         '[{"ifname":"can0","linkinfo":{"info_kind":"vcan"}}]',
-        '[{"ifname":"can0","linkinfo":{"info_kind":"can",'
-        '"info_data":{"ctrlmode":["ONE-SHOT"]}}}]',
+        '[{"ifname":"can0","linkinfo":{"info_kind":"can","info_data":{"ctrlmode":["ONE-SHOT"]}}}]',
     ],
 )
 def test_inspector_accepts_safe_interfaces(state: str) -> None:

@@ -118,3 +118,8 @@ ordinary commits from that PR's branch.
   found during the gate tracked in #64. GitHub Project "can-sniffer" created as the kanban.
 - **PR #65 merged** (`f6b2c49`) — `docs(log): record PR #63 in the project log`
   (`docs/63-project-log-pr63`). Adds the PR #63 entry above.
+- **PR #67 merged** (`f28a51f`) — `refactor: rename the project to busscope`
+  (`refactor/53-rename-busscope`, closes #53). Review finding on the README listen-only claim
+  fixed in `da00aef`. Post-merge: GitHub repository renamed to `busscope` and the local directory
+  moved; the diagnostics repository switched to `BUSSCOPE_SRC` (can-sniffer-diagnostics#1,
+  `b482807`). #66 closed as not planned: CP/PP measurement belongs to V-SEA.

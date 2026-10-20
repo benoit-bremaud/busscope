@@ -19,9 +19,7 @@ class SettingsWidget(QWidget):
 
     preferences_changed = Signal(object)
 
-    def __init__(
-        self, preferences: DisplayPreferences, repository: PreferencesRepository
-    ) -> None:
+    def __init__(self, preferences: DisplayPreferences, repository: PreferencesRepository) -> None:
         """Build the controls from the given preferences without persisting them."""
         super().__init__()
         self._repository = repository
