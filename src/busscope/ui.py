@@ -5,8 +5,10 @@ import time
 from pathlib import Path
 from typing import Protocol
 
-from PySide6.QtCore import QTimer
+from PySide6.QtCore import Qt, QTimer
+from PySide6.QtGui import QAction, QKeySequence, QPalette
 from PySide6.QtWidgets import (
+    QButtonGroup,
     QCheckBox,
     QComboBox,
     QFileDialog,
@@ -15,8 +17,11 @@ from PySide6.QtWidgets import (
     QLineEdit,
     QListWidget,
     QMainWindow,
-    QPushButton,
+    QMenu,
+    QSizePolicy,
     QTabWidget,
+    QToolBar,
+    QToolButton,
     QVBoxLayout,
     QWidget,
 )
@@ -29,11 +34,28 @@ from busscope.analysis import (
     TemporalAnalyzer,
 )
 from busscope.capture import CanInterface, CaptureConfiguration
+from busscope.icons import load_icon
 from busscope.preferences import DisplayPreferences, IdentifierFormat
 from busscope.protocol import DecodeResult
 from busscope.replay import CsvCaptureLoader, ReplayController
 from busscope.settings_ui import SettingsWidget
+from busscope.toolbar import (
+    PrimaryIntent,
+    ToolbarAction,
+    ToolbarMode,
+    ToolbarState,
+    can_switch_mode,
+    primary_intent,
+    visible_actions,
+)
 from busscope.transmission_ui import TransmissionWidget
+
+_PRIMARY_PRESENTATION = {
+    PrimaryIntent.RECORD: ("circle-dot", "Start capture"),
+    PrimaryIntent.STOP: ("square", "Stop capture"),
+    PrimaryIntent.PLAY: ("play", "Play replay"),
+    PrimaryIntent.PAUSE: ("pause", "Pause replay"),
+}
 
 logger = logging.getLogger(__name__)
 
@@ -104,30 +126,55 @@ class CaptureWindow(QMainWindow):
         self.filter_input = QLineEdit()
         self.filter_input.setPlaceholderText("IDs, e.g. 0x123, 0x456")
         self.filter_input.setAccessibleName("CAN identifier filter")
-        self.start_button = QPushButton("Start")
-        self.start_button.setAccessibleName("Start capture")
-        self.stop_button = QPushButton("Stop")
-        self.stop_button.setAccessibleName("Stop capture")
-        self.stop_button.setEnabled(False)
-        self.pause_button = QPushButton("Pause display")
-        self.pause_button.setAccessibleName("Pause display")
-        self.pause_button.setEnabled(False)
-        self.clear_button = QPushButton("Clear")
-        self.clear_button.setAccessibleName("Clear displayed frames")
-        self.export_button = QPushButton("Export CSV")
-        self.export_button.setAccessibleName("Export captured frames")
-        self.statistics_button = QPushButton("Refresh statistics")
-        self.statistics_button.setAccessibleName("Refresh CAN statistics")
-        self.load_replay_button = QPushButton("Load CSV")
-        self.load_replay_button.setAccessibleName("Load CSV replay")
-        self.play_replay_button = QPushButton("Play")
-        self.play_replay_button.setAccessibleName("Play CSV replay")
-        self.pause_replay_button = QPushButton("Pause")
-        self.pause_replay_button.setAccessibleName("Pause CSV replay")
-        self.stop_replay_button = QPushButton("Stop")
-        self.stop_replay_button.setAccessibleName("Stop CSV replay")
-        self.reset_replay_button = QPushButton("Reset")
-        self.reset_replay_button.setAccessibleName("Reset CSV replay")
+        self._mode = ToolbarMode.LIVE
+        self._replay_active = False
+        self.primary_action = QAction(self)
+        self.primary_action.setShortcut(QKeySequence(Qt.Key.Key_Space))
+        self.freeze_action = self._create_action("snowflake", "Freeze display")
+        self.freeze_action.setCheckable(True)
+        self.clear_action = self._create_action("trash-2", "Clear frames", "Ctrl+L")
+        self.export_action = self._create_action("download", "Export CSV", "Ctrl+E")
+        self.load_action = self._create_action("folder-open", "Load CSV", "Ctrl+O")
+        self.replay_stop_action = self._create_action("square", "Stop replay")
+        self.statistics_action = self._create_action("refresh-cw", "Refresh statistics")
+        self.reset_replay_action = self._create_action("rotate-ccw", "Reset replay")
+        self.live_mode_button = QToolButton()
+        self.live_mode_button.setText("Live")
+        self.replay_mode_button = QToolButton()
+        self.replay_mode_button.setText("Replay")
+        self._mode_group = QButtonGroup(self)
+        for button in (self.live_mode_button, self.replay_mode_button):
+            button.setCheckable(True)
+            self._mode_group.addButton(button)
+        self.live_mode_button.setChecked(True)
+        self.live_mode_button.setToolTip("Live capture (Ctrl+Tab to switch)")
+        self.replay_mode_button.setToolTip("CSV replay (Ctrl+Tab to switch)")
+        self.switch_mode_action = QAction(self)
+        self.switch_mode_action.setShortcut(QKeySequence("Ctrl+Tab"))
+        self.addAction(self.switch_mode_action)
+        self.status_pill = QLabel()
+        self.status_pill.setObjectName("statusPill")
+        self.status_pill.setStyleSheet(
+            "QLabel#statusPill { border: 1px solid palette(mid); border-radius: 9px;"
+            " padding: 1px 8px; }"
+        )
+        self.listen_only_label = QLabel("Listen-only")
+        self.listen_only_label.setToolTip("Frame transmission is disabled in the capture tab")
+        lock_icon = load_icon("lock", self.palette().color(QPalette.ColorRole.WindowText))
+        self.listen_only_icon = QLabel()
+        self.listen_only_icon.setPixmap(lock_icon.pixmap(16, 16))
+        self.listen_only_label.setAccessibleName("Listen-only")
+        self.overflow_button = QToolButton()
+        self.overflow_button.setIcon(
+            load_icon("ellipsis", self.palette().color(QPalette.ColorRole.WindowText))
+        )
+        self.overflow_button.setToolTip("More actions")
+        self.overflow_button.setAccessibleName("More actions")
+        self.overflow_button.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
+        overflow_menu = QMenu(self.overflow_button)
+        overflow_menu.addAction(self.statistics_action)
+        overflow_menu.addAction(self.reset_replay_action)
+        self.overflow_button.setMenu(overflow_menu)
         self.status_label = QLabel("Ready")
         self.frame_list = QListWidget()
         self.frame_list.setAccessibleName("Captured CAN frames")
@@ -137,29 +184,42 @@ class CaptureWindow(QMainWindow):
         self._replay_timer.setInterval(50)
         self._replay_timer.timeout.connect(self._advance_replay)
 
+        self.live_settings = QWidget()
+        live_settings_layout = QHBoxLayout(self.live_settings)
+        live_settings_layout.setContentsMargins(0, 0, 0, 0)
+        live_settings_layout.addWidget(QLabel("Backend:"))
+        live_settings_layout.addWidget(self.interface_input)
+        live_settings_layout.addWidget(QLabel("Channel:"))
+        live_settings_layout.addWidget(self.channel_input)
+        live_settings_layout.addWidget(self.unverified_silence_input)
         controls = QHBoxLayout()
-        controls.addWidget(QLabel("Backend:"))
-        controls.addWidget(self.interface_input)
-        controls.addWidget(QLabel("Channel:"))
-        controls.addWidget(self.channel_input)
-        controls.addWidget(self.unverified_silence_input)
+        controls.addWidget(self.live_mode_button)
+        controls.addWidget(self.replay_mode_button)
+        controls.addWidget(self.live_settings)
         controls.addWidget(QLabel("Filter:"))
         controls.addWidget(self.filter_input)
-        controls.addWidget(self.start_button)
-        controls.addWidget(self.stop_button)
-        controls.addWidget(self.pause_button)
-        controls.addWidget(self.clear_button)
-        controls.addWidget(self.export_button)
-        controls.addWidget(self.statistics_button)
-        controls.addWidget(self.load_replay_button)
-        controls.addWidget(self.play_replay_button)
-        controls.addWidget(self.pause_replay_button)
-        controls.addWidget(self.stop_replay_button)
-        controls.addWidget(self.reset_replay_button)
+        self.toolbar = QToolBar()
+        self.toolbar.addAction(self.primary_action)
+        for action in (
+            self.freeze_action,
+            self.replay_stop_action,
+            self.clear_action,
+            self.load_action,
+            self.export_action,
+        ):
+            self.toolbar.addAction(action)
+        spacer = QWidget()
+        spacer.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+        self.toolbar.addWidget(spacer)
+        self.toolbar.addWidget(self.status_pill)
+        self.toolbar.addWidget(self.listen_only_icon)
+        self.toolbar.addWidget(self.listen_only_label)
+        self.toolbar.addWidget(self.overflow_button)
 
         capture_widget = QWidget()
         layout = QVBoxLayout(capture_widget)
         layout.addLayout(controls)
+        layout.addWidget(self.toolbar)
         layout.addWidget(self.status_label)
         self.statistics_label = QLabel("Statistics:")
         layout.addWidget(self.statistics_label)
@@ -173,20 +233,105 @@ class CaptureWindow(QMainWindow):
         self.setWindowTitle("BusScope")
         self.resize(720, 480)
 
-        self.start_button.clicked.connect(self.start_capture)
-        self.stop_button.clicked.connect(self.stop_capture)
-        self.pause_button.clicked.connect(self.toggle_display_pause)
-        self.clear_button.clicked.connect(self.clear_history)
-        self.export_button.clicked.connect(self.export_csv)
-        self.statistics_button.clicked.connect(self.refresh_statistics)
-        self.load_replay_button.clicked.connect(self.load_replay)
-        self.play_replay_button.clicked.connect(self.play_replay)
-        self.pause_replay_button.clicked.connect(self.pause_replay)
-        self.stop_replay_button.clicked.connect(self.stop_replay)
-        self.reset_replay_button.clicked.connect(self.reset_replay)
+        self.primary_action.triggered.connect(self.trigger_primary)
+        self.freeze_action.triggered.connect(self.toggle_display_pause)
+        self.clear_action.triggered.connect(self.clear_history)
+        self.export_action.triggered.connect(self.export_csv)
+        self.statistics_action.triggered.connect(self.refresh_statistics)
+        self.load_action.triggered.connect(self.load_replay)
+        self.replay_stop_action.triggered.connect(self.stop_replay)
+        self.reset_replay_action.triggered.connect(self.reset_replay)
+        self.live_mode_button.clicked.connect(lambda: self.set_mode(ToolbarMode.LIVE))
+        self.replay_mode_button.clicked.connect(lambda: self.set_mode(ToolbarMode.REPLAY))
+        self.switch_mode_action.triggered.connect(self.switch_mode)
         self.filter_input.textChanged.connect(self.apply_filter)
         self.settings_widget.preferences_changed.connect(self.apply_preferences)
         self.apply_preferences(preferences)
+        self._sync_toolbar()
+
+    def _create_action(self, icon: str, text: str, shortcut: str | None = None) -> QAction:
+        """Build an icon-only action whose tooltip names it and its shortcut."""
+        color = self.palette().color(QPalette.ColorRole.WindowText)
+        action = QAction(load_icon(icon, color), text, self)
+        if shortcut is not None:
+            action.setShortcut(QKeySequence(shortcut))
+            action.setToolTip(f"{text} ({shortcut})")
+        return action
+
+    def _toolbar_state(self) -> ToolbarState:
+        """Snapshot the window state for the toolbar rules."""
+        return ToolbarState(
+            mode=self._mode,
+            capturing=self._capturing,
+            replay_loaded=self._replay.has_records,
+            replay_playing=self._replay.is_playing,
+            replay_active=self._replay_active,
+        )
+
+    def _sync_toolbar(self) -> None:
+        """Show only the controls that apply to the current mode and state."""
+        state = self._toolbar_state()
+        visible = visible_actions(state)
+        controls = {
+            ToolbarAction.PRIMARY: self.primary_action,
+            ToolbarAction.FREEZE: self.freeze_action,
+            ToolbarAction.CLEAR: self.clear_action,
+            ToolbarAction.EXPORT: self.export_action,
+            ToolbarAction.LOAD: self.load_action,
+            ToolbarAction.REPLAY_STOP: self.replay_stop_action,
+        }
+        for toolbar_action, action in controls.items():
+            action.setVisible(toolbar_action in visible)
+        intent = primary_intent(state)
+        icon, text = _PRIMARY_PRESENTATION[intent]
+        self.primary_action.setIcon(
+            load_icon(icon, self.palette().color(QPalette.ColorRole.WindowText))
+        )
+        self.primary_action.setText(text)
+        self.primary_action.setToolTip(f"{text} (Space)")
+        switchable = can_switch_mode(state)
+        self.live_mode_button.setEnabled(switchable)
+        self.replay_mode_button.setEnabled(switchable)
+        self.live_settings.setVisible(self._mode is ToolbarMode.LIVE)
+        self.reset_replay_action.setVisible(self._mode is ToolbarMode.REPLAY)
+        self.freeze_action.setChecked(self._display_paused)
+        self.status_pill.setText(self._status_pill_text(state))
+
+    def _status_pill_text(self, state: ToolbarState) -> str:
+        """Name the current state in one or two words."""
+        if state.mode is ToolbarMode.LIVE:
+            if not state.capturing:
+                return "Idle"
+            return "Frozen" if self._display_paused else "Listening"
+        if not state.replay_loaded:
+            return "No capture"
+        if state.replay_playing:
+            return "Playing"
+        return "Paused" if state.replay_active else "Loaded"
+
+    def set_mode(self, mode: ToolbarMode) -> None:
+        """Switch between live capture and replay unless a source is running."""
+        if mode is not self._mode and can_switch_mode(self._toolbar_state()):
+            self._mode = mode
+        (
+            self.live_mode_button if self._mode is ToolbarMode.LIVE else self.replay_mode_button
+        ).setChecked(True)
+        self._sync_toolbar()
+
+    def switch_mode(self) -> None:
+        """Toggle to the other mode (Ctrl+Tab)."""
+        other = ToolbarMode.REPLAY if self._mode is ToolbarMode.LIVE else ToolbarMode.LIVE
+        self.set_mode(other)
+
+    def trigger_primary(self) -> None:
+        """Run the primary toggle of the current state (Space)."""
+        dispatch = {
+            PrimaryIntent.RECORD: self.start_capture,
+            PrimaryIntent.STOP: self.stop_capture,
+            PrimaryIntent.PLAY: self.play_replay,
+            PrimaryIntent.PAUSE: self.pause_replay,
+        }
+        dispatch[primary_intent(self._toolbar_state())]()
 
     def apply_preferences(self, preferences: DisplayPreferences) -> None:
         """Apply display preferences immediately without changing retained data or state."""
@@ -202,7 +347,7 @@ class CaptureWindow(QMainWindow):
         visible = preferences.show_temporal_statistics
         self.statistics_label.setVisible(visible)
         self.statistics_list.setVisible(visible)
-        self.statistics_button.setVisible(visible)
+        self.statistics_action.setVisible(visible)
         self._render_display()
         if visible and statistics_changed:
             self.refresh_statistics()
@@ -269,10 +414,7 @@ class CaptureWindow(QMainWindow):
         if self._capture_origin is None:
             self._capture_origin = time.monotonic()
         self._channel = channel
-        self.start_button.setEnabled(False)
-        self.stop_button.setEnabled(True)
-        self.pause_button.setEnabled(True)
-        self.pause_button.setText("Pause display")
+        self._sync_toolbar()
         self.status_label.setText(f"Capturing on {channel}")
         self._timer.start()
 
@@ -280,9 +422,9 @@ class CaptureWindow(QMainWindow):
         """Stop polling and reset the window even if cleanup fails."""
         self._timer.stop()
         self._capturing = False
-        self.start_button.setEnabled(True)
-        self.stop_button.setEnabled(False)
-        self.pause_button.setEnabled(False)
+        self._display_paused = False
+        self._display_pause_index = None
+        self._sync_toolbar()
         try:
             self._controller.stop()
         except Exception as error:
@@ -293,7 +435,7 @@ class CaptureWindow(QMainWindow):
     def toggle_display_pause(self) -> None:
         """Pause or resume display updates without stopping capture."""
         self._display_paused = not self._display_paused
-        self.pause_button.setText("Resume display" if self._display_paused else "Pause display")
+        self._sync_toolbar()
         if self._display_paused:
             self._display_pause_index = len(self._records)
             return
@@ -357,7 +499,8 @@ class CaptureWindow(QMainWindow):
         self._display_start_index = 0
         self._display_paused = False
         self._display_pause_index = None
-        self.pause_button.setText("Pause display")
+        self._replay_active = False
+        self._sync_toolbar()
         self.frame_list.clear()
         self.statistics_list.clear()
         self.status_label.setText(f"Loaded {len(records)} replay frame(s)")
@@ -376,18 +519,23 @@ class CaptureWindow(QMainWindow):
             return
         self._replay_last_tick = time.monotonic()
         self._replay_timer.start()
+        self._replay_active = True
+        self._sync_toolbar()
         self.status_label.setText("Replaying CSV capture")
 
     def pause_replay(self) -> None:
         """Pause local CSV playback."""
         self._replay.pause()
         self._replay_timer.stop()
+        self._sync_toolbar()
         self.status_label.setText("Replay paused")
 
     def stop_replay(self) -> None:
         """Stop local CSV playback while preserving its current position."""
         self._replay.stop()
         self._replay_timer.stop()
+        self._replay_active = False
+        self._sync_toolbar()
         self.status_label.setText("Replay stopped")
 
     def reset_replay(self) -> None:
@@ -401,6 +549,8 @@ class CaptureWindow(QMainWindow):
         self._display_start_index = 0
         self.frame_list.clear()
         self.statistics_list.clear()
+        self._replay_active = False
+        self._sync_toolbar()
         self.status_label.setText("Replay reset")
 
     def _advance_replay(self) -> None:
@@ -415,6 +565,8 @@ class CaptureWindow(QMainWindow):
                 self._add_to_display(captured)
         if was_playing and not self._replay.is_playing:
             self._replay_timer.stop()
+            self._replay_active = False
+            self._sync_toolbar()
             self.status_label.setText("Replay finished")
 
     def _format_statistics(self, item: IdentifierStatistics) -> str:
@@ -468,8 +620,7 @@ class CaptureWindow(QMainWindow):
                 self._timer.stop()
                 self._stop_after_poll_error()
                 self._capturing = False
-                self.start_button.setEnabled(True)
-                self.stop_button.setEnabled(False)
+                self._sync_toolbar()
                 self.status_label.setText(f"Error: {error}")
                 return
 

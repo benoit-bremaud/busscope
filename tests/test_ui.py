@@ -16,6 +16,7 @@ from busscope.protocol import (
     SystemMeasurements,
 )
 from busscope.settings_ui import SettingsWidget
+from busscope.toolbar import ToolbarMode
 from busscope.transmission import ManualTransmission
 from busscope.transmission_ui import TransmissionWidget
 from busscope.ui import CaptureController, CaptureWindow
@@ -199,12 +200,11 @@ def test_window_load_replay_resets_display_pause(
     )
     window = create_test_window(FakeController([]))
     window._display_paused = True
-    window.pause_button.setText("Resume display")
 
     window.load_replay()
 
     assert window._display_paused is False
-    assert window.pause_button.text() == "Pause display"
+    assert window.freeze_action.isChecked() is False
 
 
 def test_window_reports_replay_completion(
@@ -487,8 +487,7 @@ def test_window_remains_capturing_when_no_frame_is_available(
     window._poll_capture()
 
     assert window.status_label.text() == "Capturing on can0"
-    assert window.start_button.isEnabled() is False
-    assert window.stop_button.isEnabled() is True
+    assert window.primary_action.text() == "Stop capture"
 
 
 def test_window_stop_requests_controller_and_closes_capture(qt_application: QApplication) -> None:
@@ -500,8 +499,7 @@ def test_window_stop_requests_controller_and_closes_capture(qt_application: QApp
     window.stop_capture()
 
     assert controller.stop_called is True
-    assert window.start_button.isEnabled() is True
-    assert window.stop_button.isEnabled() is False
+    assert window.primary_action.text() == "Start capture"
 
 
 def test_window_stop_reports_cleanup_error_and_resets_controls(
@@ -518,8 +516,7 @@ def test_window_stop_reports_cleanup_error_and_resets_controls(
     window.stop_capture()
 
     assert "close failed" in window.status_label.text()
-    assert window.start_button.isEnabled() is True
-    assert window.stop_button.isEnabled() is False
+    assert window.primary_action.text() == "Start capture"
 
 
 def test_window_preserves_poll_error_when_cleanup_also_fails(
@@ -541,8 +538,7 @@ def test_window_preserves_poll_error_when_cleanup_also_fails(
 
     assert "receive failed" in window.status_label.text()
     assert "close failed" not in window.status_label.text()
-    assert window.start_button.isEnabled() is True
-    assert window.stop_button.isEnabled() is False
+    assert window.primary_action.text() == "Start capture"
 
 
 def test_window_displays_capture_error(qt_application: QApplication) -> None:
@@ -613,7 +609,7 @@ def test_window_applies_settings_without_changing_capture_state(
     assert window.frame_list.item(0).text() == "291 | Decoded Infypower frame"
     assert window.statistics_label.isHidden()
     assert window.statistics_list.isHidden()
-    assert window.statistics_button.isHidden()
+    assert not window.statistics_action.isVisible()
     assert window._capturing is True
     assert window._display_paused is True
     assert window._records == [*retained, hidden]
@@ -746,3 +742,168 @@ def test_window_scopes_the_unverified_silence_acceptance_to_slcan(
     # Going back to a verifiable backend clears it, so it cannot silently return.
     window.interface_input.setCurrentIndex(window.interface_input.findData(CanInterface.SOCKETCAN))
     assert window.unverified_silence_input.isChecked() is False
+
+
+def _write_replay(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    source = tmp_path / "capture.csv"
+    source.write_text(
+        "timestamp_seconds,arbitration_id,is_extended_id,is_error_frame,data,description,"
+        "decoded_values,diagnostics\n"
+        "0.000000,0x123,true,false,01,Frame,,\n"
+        "5.000000,0x124,true,false,02,Frame,,\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        "busscope.ui.QFileDialog.getOpenFileName",
+        lambda *args: (str(source), "CSV files (*.csv)"),
+    )
+
+
+def _visible_toolbar_controls(window: CaptureWindow) -> int:
+    contextual = (
+        window.primary_action,
+        window.freeze_action,
+        window.clear_action,
+        window.export_action,
+        window.load_action,
+        window.replay_stop_action,
+    )
+    # The mode switch and the overflow button are always shown; the status pill and the
+    # listen-only lock are indicators, not controls.
+    return sum(action.isVisible() for action in contextual) + 2
+
+
+def test_toolbar_starts_in_live_idle(qt_application: QApplication) -> None:
+    del qt_application
+    window = create_test_window(FakeController([]))
+
+    assert window.live_mode_button.isChecked()
+    assert window.status_pill.text() == "Idle"
+    assert window.primary_action.toolTip() == "Start capture (Space)"
+    assert window.export_action.toolTip() == "Export CSV (Ctrl+E)"
+    assert window.freeze_action.isVisible() is False
+    assert window.load_action.isVisible() is False
+    assert window.listen_only_label.accessibleName() == "Listen-only"
+
+
+def test_primary_toggle_drives_live_capture(qt_application: QApplication) -> None:
+    del qt_application
+    controller = FakeController([])
+    window = create_test_window(controller)
+
+    window.trigger_primary()
+
+    assert window.status_pill.text() == "Listening"
+    assert window.freeze_action.isVisible() is True
+    assert window.replay_mode_button.isEnabled() is False
+
+    window.freeze_action.trigger()
+    assert window.status_pill.text() == "Frozen"
+    assert window.freeze_action.isChecked() is True
+
+    window.trigger_primary()
+    assert controller.stop_called is True
+    assert window.status_pill.text() == "Idle"
+    assert window.freeze_action.isChecked() is False
+
+
+def test_mode_switch_is_refused_while_capturing(qt_application: QApplication) -> None:
+    del qt_application
+    window = create_test_window(FakeController([]))
+    window.start_capture()
+
+    window.set_mode(ToolbarMode.REPLAY)
+
+    assert window.live_mode_button.isChecked()
+    assert window.live_settings.isHidden() is False
+
+
+def test_replay_mode_lifecycle(
+    qt_application: QApplication, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    del qt_application
+    _write_replay(tmp_path, monkeypatch)
+    window = create_test_window(FakeController([]))
+
+    window.switch_mode()
+    assert window.replay_mode_button.isChecked()
+    assert window.live_settings.isHidden()
+    assert window.status_pill.text() == "No capture"
+    assert window.primary_action.isVisible() is False
+    assert window.reset_replay_action.isVisible() is True
+
+    window.load_action.trigger()
+    assert window.status_pill.text() == "Loaded"
+    assert window.primary_action.text() == "Play replay"
+
+    window.trigger_primary()
+    assert window.status_pill.text() == "Playing"
+    assert window.replay_stop_action.isVisible() is True
+    assert window.load_action.isVisible() is False
+    assert window.live_mode_button.isEnabled() is False
+
+    window.trigger_primary()
+    assert window.status_pill.text() == "Paused"
+    assert window.replay_stop_action.isVisible() is True
+    assert window.live_mode_button.isEnabled() is True
+
+    window.replay_stop_action.trigger()
+    assert window.status_pill.text() == "Loaded"
+
+    window.trigger_primary()
+    window.reset_replay_action.trigger()
+    assert window.status_pill.text() == "Loaded"
+
+    window.switch_mode()
+    assert window.live_mode_button.isChecked()
+    assert window.reset_replay_action.isVisible() is False
+
+
+def test_toolbar_never_shows_more_than_six_controls(
+    qt_application: QApplication, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    del qt_application
+    _write_replay(tmp_path, monkeypatch)
+    window = create_test_window(FakeController([]))
+    counts = [_visible_toolbar_controls(window)]
+    window.start_capture()
+    counts.append(_visible_toolbar_controls(window))
+    window.stop_capture()
+    window.set_mode(ToolbarMode.REPLAY)
+    counts.append(_visible_toolbar_controls(window))
+    window.load_replay()
+    counts.append(_visible_toolbar_controls(window))
+    window.play_replay()
+    counts.append(_visible_toolbar_controls(window))
+
+    assert counts == [5, 6, 3, 5, 5]
+
+
+def test_overflow_menu_holds_rare_actions(qt_application: QApplication) -> None:
+    del qt_application
+    window = create_test_window(FakeController([]))
+    menu = window.overflow_button.menu()
+
+    assert menu is not None
+    assert [action.text() for action in menu.actions()] == [
+        "Refresh statistics",
+        "Reset replay",
+    ]
+
+
+def test_replay_finish_returns_to_loaded(
+    qt_application: QApplication, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    del qt_application
+    _write_replay(tmp_path, monkeypatch)
+    clock = iter([10.0, 20.0])
+    monkeypatch.setattr("busscope.ui.time.monotonic", lambda: next(clock))
+    window = create_test_window(FakeController([]))
+    window.set_mode(ToolbarMode.REPLAY)
+    window.load_replay()
+    window.play_replay()
+
+    window._advance_replay()
+
+    assert window.status_pill.text() == "Loaded"
+    assert window.primary_action.text() == "Play replay"
