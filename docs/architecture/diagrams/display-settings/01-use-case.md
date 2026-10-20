@@ -1,6 +1,6 @@
 # Use-case diagram — display settings — customize presentation
 
-> **Feature**: issue #26 — [Add persistent display settings](https://github.com/benoit-bremaud/can-sniffer/issues/26)
+> **Feature**: issue #26 — [Add persistent display settings](https://github.com/benoit-bremaud/busscope/issues/26)
 > **Source specs**: `docs/architecture/specs/display-settings.md` §Objective, §Rules
 
 ## Context
@@ -13,7 +13,7 @@ preferences. It does not model capture configuration or CAN transmission.
 ```mermaid
 flowchart LR
     Operator[Operator]
-    System[CAN Sniffer]
+    System[BusScope]
     Customize([Customize CAN presentation])
     Restore([Restore display defaults])
 

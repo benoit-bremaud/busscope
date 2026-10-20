@@ -2,7 +2,7 @@ from dataclasses import FrozenInstanceError
 
 import pytest
 
-from can_sniffer.transmission import ManualTransmission
+from busscope.transmission import ManualTransmission
 
 
 @pytest.mark.parametrize(

@@ -1,27 +1,27 @@
-"""Application composition root for the CAN Sniffer desktop application."""
+"""Application composition root for the BusScope desktop application."""
 
 import sys
 
 from PySide6.QtCore import QCoreApplication, QSettings
 from PySide6.QtWidgets import QApplication
 
-from can_sniffer.capture import PythonCanAdapter
-from can_sniffer.protocol import ProtocolDecoder
-from can_sniffer.qt_settings import QtSettingsRepository
-from can_sniffer.session import CaptureSession
-from can_sniffer.settings_ui import SettingsWidget
-from can_sniffer.socketcan_transmission import (
+from busscope.capture import PythonCanAdapter
+from busscope.protocol import ProtocolDecoder
+from busscope.qt_settings import QtSettingsRepository
+from busscope.session import CaptureSession
+from busscope.settings_ui import SettingsWidget
+from busscope.socketcan_transmission import (
     IpLinkCanInterfaceInspector,
     SocketCanTransmitter,
 )
-from can_sniffer.transmission_ui import TransmissionWidget
-from can_sniffer.ui import CaptureWindow
+from busscope.transmission_ui import TransmissionWidget
+from busscope.ui import CaptureWindow
 
 
 def create_application(arguments: list[str] | None = None) -> QApplication:
     """Return the existing Qt application or create one for the current process."""
     QCoreApplication.setOrganizationName("benoit-bremaud")
-    QCoreApplication.setApplicationName("can-sniffer")
+    QCoreApplication.setApplicationName("busscope")
     application = QApplication.instance()
     if isinstance(application, QApplication):
         return application
@@ -40,7 +40,7 @@ def create_capture_window() -> CaptureWindow:
 
 
 def main() -> int:
-    """Start the CAN Sniffer desktop application."""
+    """Start the BusScope desktop application."""
     application = create_application()
     window = create_capture_window()
     window.show()

@@ -2,9 +2,9 @@ from collections.abc import Iterable
 
 import pytest
 
-from can_sniffer.capture import CaptureConfiguration
-from can_sniffer.protocol import CanFrame, ProtocolDecoder
-from can_sniffer.session import CaptureSession
+from busscope.capture import CaptureConfiguration
+from busscope.protocol import CanFrame, ProtocolDecoder
+from busscope.session import CaptureSession
 
 
 class FakePort:

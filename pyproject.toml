@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "can-sniffer"
+name = "busscope"
 version = "0.1.1"
 description = "Graphical CAN bus monitor for Infypower charger modules on Linux."
 readme = "README.md"
@@ -16,7 +16,7 @@ dependencies = [
 ]
 
 [project.scripts]
-can-sniffer = "can_sniffer.app:main"
+busscope = "busscope.app:main"
 
 [project.optional-dependencies]
 dev = [
@@ -28,10 +28,10 @@ dev = [
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/can_sniffer"]
+packages = ["src/busscope"]
 
 [tool.pytest.ini_options]
-addopts = "--strict-markers --strict-config --cov=can_sniffer --cov-report=term-missing --cov-fail-under=90"
+addopts = "--strict-markers --strict-config --cov=busscope --cov-report=term-missing --cov-fail-under=90"
 testpaths = ["tests"]
 
 [tool.interrogate]

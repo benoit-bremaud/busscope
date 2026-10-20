@@ -1,6 +1,6 @@
-"""Domain and application package for the CAN sniffer."""
+"""Domain and application package for the BusScope."""
 
-from can_sniffer.capture import (
+from busscope.capture import (
     CanCapturePort,
     CanInterface,
     CaptureConfiguration,
@@ -10,7 +10,7 @@ from can_sniffer.capture import (
     PythonCanAdapter,
     receive_frames,
 )
-from can_sniffer.protocol import (
+from busscope.protocol import (
     ACInputMeasurements,
     CanFrame,
     DecodeResult,
@@ -22,7 +22,7 @@ from can_sniffer.protocol import (
     ProtocolDecoder,
     SystemMeasurements,
 )
-from can_sniffer.session import CaptureSession
+from busscope.session import CaptureSession
 
 __all__ = [
     "CanFrame",

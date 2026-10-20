@@ -3,8 +3,8 @@
 import logging
 from collections.abc import Iterator
 
-from can_sniffer.capture import CanCapturePort, CaptureConfiguration
-from can_sniffer.protocol import DecodeResult, ProtocolDecoder
+from busscope.capture import CanCapturePort, CaptureConfiguration
+from busscope.protocol import DecodeResult, ProtocolDecoder
 
 logger = logging.getLogger(__name__)
 

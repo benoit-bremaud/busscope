@@ -16,7 +16,7 @@ CAN transmission requires a dedicated safety design and remains disabled by defa
 
 ## Versioned public surface
 
-Semantic Versioning covers the installed `can-sniffer` command, documented application behavior,
+Semantic Versioning covers the installed `busscope` command, documented application behavior,
 the exported CSV format accepted for replay, and documented protocol-decoding results. Internal
 Python modules are not a stable library API.
 

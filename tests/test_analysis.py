@@ -3,8 +3,8 @@ from io import StringIO
 
 import pytest
 
-from can_sniffer.analysis import CapturedFrame, CsvExporter, FrameFilter, TemporalAnalyzer
-from can_sniffer.protocol import CanFrame, DecodeResult, ModuleAvailability
+from busscope.analysis import CapturedFrame, CsvExporter, FrameFilter, TemporalAnalyzer
+from busscope.protocol import CanFrame, DecodeResult, ModuleAvailability
 
 
 def captured(identifier: int = 0x123, description: str = "Decoded") -> CapturedFrame:

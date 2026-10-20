@@ -4,11 +4,11 @@ import subprocess
 import can
 import pytest
 
-from can_sniffer.socketcan_transmission import (
+from busscope.socketcan_transmission import (
     IpLinkCanInterfaceInspector,
     SocketCanTransmitter,
 )
-from can_sniffer.transmission import ManualTransmission
+from busscope.transmission import ManualTransmission
 
 
 class FakeReadiness:

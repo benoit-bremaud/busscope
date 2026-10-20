@@ -10,7 +10,7 @@ one charger module through Infypower command `0x0A`.
 ```mermaid
 flowchart LR
     Operator[Operator]
-    subgraph System[CAN Sniffer]
+    subgraph System[BusScope]
         UC1((Inspect module ratings))
         UC2((Inspect an invalid rating frame))
     end

@@ -1,6 +1,6 @@
 # Safe manual CAN frame transmission
 
-> **Feature**: issue #34 — [add safe manual CAN frame transmission](https://github.com/benoit-bremaud/can-sniffer/issues/34)
+> **Feature**: issue #34 — [add safe manual CAN frame transmission](https://github.com/benoit-bremaud/busscope/issues/34)
 > **Status**: implemented — pending review
 > **Protocol source**: Infypower Charger module CAN Communication Protocol V1.13, sections 1.1,
 > 2.1, and 2.2

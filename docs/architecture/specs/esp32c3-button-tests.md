@@ -3,7 +3,7 @@
 > **Status**: implemented and hardware-accepted on 2026-09-10. All three scenarios were
 > verified on the isolated bench — blue and white at 125 kbit/s, red at 250 kbit/s — with
 > zero error counters; see the [bench log](../../hardware/esp32c3-can-bench.md).
-> **Related work**: [bench Issue #45](https://github.com/benoit-bremaud/can-sniffer/issues/45).
+> **Related work**: [bench Issue #45](https://github.com/benoit-bremaud/busscope/issues/45).
 > The additional bitrate/button scope needs its own GitHub tracking before publication;
 > this local specification is the current work item. No issue/PR has been created for it.
 

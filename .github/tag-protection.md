@@ -9,11 +9,11 @@ versions as immutable references while retaining an explicit administrator bypas
 Verify that no ruleset with the same name exists, then create the active tag ruleset:
 
 ```bash
-gh api repos/benoit-bremaud/can-sniffer/rulesets \
+gh api repos/benoit-bremaud/busscope/rulesets \
   --paginate \
   --jq '.[] | select(.name == "Protect release tags") | {id, name, target, enforcement}'
 
-gh api repos/benoit-bremaud/can-sniffer/rulesets -X POST --input - <<'JSON'
+gh api repos/benoit-bremaud/busscope/rulesets -X POST --input - <<'JSON'
 {
   "name": "Protect release tags",
   "target": "tag",
@@ -45,11 +45,11 @@ JSON
 Find the ruleset identifier, then inspect its full configuration:
 
 ```bash
-gh api repos/benoit-bremaud/can-sniffer/rulesets \
+gh api repos/benoit-bremaud/busscope/rulesets \
   --paginate \
   --jq '.[] | select(.name == "Protect release tags") | {id, name, target, enforcement}'
 
-gh api repos/benoit-bremaud/can-sniffer/rulesets/<RULESET_ID>
+gh api repos/benoit-bremaud/busscope/rulesets/<RULESET_ID>
 ```
 
 The result must target tags, use active enforcement, include `refs/tags/v*`, contain creation,
@@ -61,5 +61,5 @@ Remove this ruleset only when replacing the policy or recovering from a document
 error. Record the reason before running:
 
 ```bash
-gh api repos/benoit-bremaud/can-sniffer/rulesets/<RULESET_ID> -X DELETE
+gh api repos/benoit-bremaud/busscope/rulesets/<RULESET_ID> -X DELETE
 ```

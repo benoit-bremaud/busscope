@@ -8,7 +8,7 @@ from typing import Protocol
 
 import can
 
-from can_sniffer.transmission import CanInterfaceReadinessPort, ManualTransmission
+from busscope.transmission import CanInterfaceReadinessPort, ManualTransmission
 
 _SEND_TIMEOUT_SECONDS = 1.0
 _INSPECTION_TIMEOUT_SECONDS = 2.0

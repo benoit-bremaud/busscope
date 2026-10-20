@@ -1,6 +1,6 @@
 # Capture analysis specification
 
-> **Feature**: issue #15 — [filter, pause, clear, and export captured CAN frames](https://github.com/benoit-bremaud/can-sniffer/issues/15)
+> **Feature**: issue #15 — [filter, pause, clear, and export captured CAN frames](https://github.com/benoit-bremaud/busscope/issues/15)
 
 ## Scope
 

@@ -10,7 +10,7 @@ internal modules or the graphical navigation.
 ```mermaid
 flowchart LR
     Operator[Operator]
-    subgraph System[CAN Sniffer]
+    subgraph System[BusScope]
         UC1((Inspect a received CAN frame))
         UC2((Identify charger faults))
         UC3((Inspect an unknown frame))

@@ -1,12 +1,12 @@
 # Offline replay specification
 
-> **Feature**: issue #19 — [replay exported CAN captures offline](https://github.com/benoit-bremaud/can-sniffer/issues/19)
+> **Feature**: issue #19 — [replay exported CAN captures offline](https://github.com/benoit-bremaud/busscope/issues/19)
 >
-> **Semantic decoding extension**: issue #40 — [preserve decoded protocol values](https://github.com/benoit-bremaud/can-sniffer/issues/40)
+> **Semantic decoding extension**: issue #40 — [preserve decoded protocol values](https://github.com/benoit-bremaud/busscope/issues/40)
 
 ## Scope
 
-This feature loads CAN Sniffer CSV exports and replays their retained records locally. It uses
+This feature loads BusScope CSV exports and replays their retained records locally. It uses
 the existing display and statistics workflow without opening SocketCAN or transmitting frames.
 
 ## Decisions

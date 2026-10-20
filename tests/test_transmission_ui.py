@@ -1,8 +1,8 @@
 import pytest
 from PySide6.QtWidgets import QApplication, QMessageBox
 
-from can_sniffer.transmission import ManualTransmission
-from can_sniffer.transmission_ui import TransmissionWidget
+from busscope.transmission import ManualTransmission
+from busscope.transmission_ui import TransmissionWidget
 
 
 class FakeTransmitter:

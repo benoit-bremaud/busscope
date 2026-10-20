@@ -11,7 +11,7 @@ rather than inventing one.
 
 ```mermaid
 sequenceDiagram
-    participant App as can_sniffer
+    participant App as busscope
     participant Bus as python-can slcan
     participant Codec as slcan codec
     participant Port as TwaiPort

@@ -1,6 +1,6 @@
 # Component diagram — display settings — dependency boundaries
 
-> **Feature**: issue #26 — [Add persistent display settings](https://github.com/benoit-bremaud/can-sniffer/issues/26)
+> **Feature**: issue #26 — [Add persistent display settings](https://github.com/benoit-bremaud/busscope/issues/26)
 > **Source specs**: `docs/architecture/specs/display-settings.md` §Rules, §Persistence keys
 
 ## Context
@@ -44,7 +44,7 @@ flowchart LR
 ## Notes
 
 - Dependencies point toward the pure preference model and repository contract.
-- The application bootstrap configures the `benoit-bremaud` / `can-sniffer` namespace before
+- The application bootstrap configures the `benoit-bremaud` / `busscope` namespace before
   the repository creates or accesses `QSettings`.
 - The bootstrap assembles the concrete adapter and Qt widgets; `CaptureWindow` receives no
   persistence dependency.

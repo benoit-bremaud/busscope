@@ -11,7 +11,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from can_sniffer.transmission import CanTransmissionPort, ManualTransmission
+from busscope.transmission import CanTransmissionPort, ManualTransmission
 
 
 class TransmissionWidget(QWidget):

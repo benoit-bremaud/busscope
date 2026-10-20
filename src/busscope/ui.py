@@ -21,19 +21,19 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from can_sniffer.analysis import (
+from busscope.analysis import (
     CapturedFrame,
     CsvExporter,
     FrameFilter,
     IdentifierStatistics,
     TemporalAnalyzer,
 )
-from can_sniffer.capture import CanInterface, CaptureConfiguration
-from can_sniffer.preferences import DisplayPreferences, IdentifierFormat
-from can_sniffer.protocol import DecodeResult
-from can_sniffer.replay import CsvCaptureLoader, ReplayController
-from can_sniffer.settings_ui import SettingsWidget
-from can_sniffer.transmission_ui import TransmissionWidget
+from busscope.capture import CanInterface, CaptureConfiguration
+from busscope.preferences import DisplayPreferences, IdentifierFormat
+from busscope.protocol import DecodeResult
+from busscope.replay import CsvCaptureLoader, ReplayController
+from busscope.settings_ui import SettingsWidget
+from busscope.transmission_ui import TransmissionWidget
 
 logger = logging.getLogger(__name__)
 
@@ -170,7 +170,7 @@ class CaptureWindow(QMainWindow):
         self.tabs.addTab(self.transmission_widget, "Transmission")
         self.tabs.addTab(self.settings_widget, "Settings")
         self.setCentralWidget(self.tabs)
-        self.setWindowTitle("CAN Sniffer")
+        self.setWindowTitle("BusScope")
         self.resize(720, 480)
 
         self.start_button.clicked.connect(self.start_capture)
