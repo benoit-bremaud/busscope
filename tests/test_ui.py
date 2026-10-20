@@ -975,3 +975,36 @@ def test_poll_error_clears_display_freeze(qt_application: QApplication) -> None:
 
     assert window.freeze_action.isChecked() is False
     assert window.status_pill.text() == "Idle"
+
+
+def test_freeze_action_announces_resume_while_frozen(qt_application: QApplication) -> None:
+    del qt_application
+    window = create_test_window(FakeController([]))
+    window.start_capture()
+
+    window.freeze_action.trigger()
+    assert window.freeze_action.text() == "Resume display"
+    assert window.freeze_action.toolTip() == "Resume display"
+
+    window.freeze_action.trigger()
+    assert window.freeze_action.text() == "Freeze display"
+
+
+def test_play_after_replay_finished_restarts_from_the_beginning(
+    qt_application: QApplication, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    del qt_application
+    _write_replay(tmp_path, monkeypatch)
+    clock = iter([10.0, 20.0, 30.0])
+    monkeypatch.setattr("busscope.ui.time.monotonic", lambda: next(clock))
+    window = create_test_window(FakeController([]))
+    window.set_mode(ToolbarMode.REPLAY)
+    window.load_replay()
+    window.play_replay()
+    window._advance_replay()
+
+    window.trigger_primary()
+
+    assert window.status_pill.text() == "Playing"
+    assert window.status_label.text() == "Replaying CSV capture"
+    assert window._records == []

@@ -302,6 +302,14 @@ class CaptureWindow(QMainWindow):
         self.live_settings.setVisible(self._mode is ToolbarMode.LIVE)
         self.reset_replay_action.setVisible(self._mode is ToolbarMode.REPLAY)
         self.freeze_action.setChecked(self._display_paused)
+        freeze_icon, freeze_text = (
+            ("play", "Resume display") if self._display_paused else ("snowflake", "Freeze display")
+        )
+        self.freeze_action.setIcon(
+            load_icon(freeze_icon, self.palette().color(QPalette.ColorRole.WindowText))
+        )
+        self.freeze_action.setText(freeze_text)
+        self.freeze_action.setToolTip(freeze_text)
         self.status_pill.setText(self._status_pill_text(state))
 
     def _status_pill_text(self, state: ToolbarState) -> str:
@@ -537,8 +545,9 @@ class CaptureWindow(QMainWindow):
             return
         self._replay.play()
         if not self._replay.is_playing:
-            self.status_label.setText("Error: replay has finished, reset it before replay")
-            return
+            # A finished replay shows as Loaded, so Play restarts it from the beginning.
+            self.reset_replay()
+            self._replay.play()
         self._replay_last_tick = time.monotonic()
         self._replay_timer.start()
         self._replay_active = True
