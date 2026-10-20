@@ -1,6 +1,6 @@
 # State-machine diagram — ESP32-C3 CAN bench
 
-> **Feature**: [Issue #45](https://github.com/benoit-bremaud/can-sniffer/issues/45)
+> **Feature**: [Issue #45](https://github.com/benoit-bremaud/busscope/issues/45)
 > **Source specs**: [ESP32-C3 CAN bench](../../specs/esp32c3-can-bench.md)
 
 ## Context

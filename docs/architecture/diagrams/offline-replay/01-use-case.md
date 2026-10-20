@@ -13,7 +13,7 @@ excludes CAN transmission.
 ```mermaid
 flowchart LR
     Operator((Operator))
-    subgraph SYSTEM ["CAN Sniffer"]
+    subgraph SYSTEM ["BusScope"]
         subgraph OfflineReplay ["Offline replay"]
             UC1(("Load a saved capture"))
             UC2(("Replay a decoded capture"))

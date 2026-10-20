@@ -12,7 +12,7 @@ actor-goal view.
 ```mermaid
 graph LR
     Operator((Operator))
-    Application((can_sniffer))
+    Application((busscope))
 
     subgraph Sniffer[ESP32-C3 slcan sniffer]
         Observe[Observe a bus without influencing it]

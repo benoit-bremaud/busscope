@@ -1,6 +1,6 @@
 # Native slcan capture and verified listen-only
 
-> **Feature**: [Issue #48](https://github.com/benoit-bremaud/can-sniffer/issues/48)
+> **Feature**: [Issue #48](https://github.com/benoit-bremaud/busscope/issues/48)
 > **Status**: conception approved 2026-09-11 and implemented in the same pull
 > request. Live-bus hardware validation is outstanding; see
 > "What the bench can and cannot prove".
@@ -129,5 +129,5 @@ CAN interface with error reporting. That is a separate decision, deliberately ou
 ## References
 
 - [Capture UML views](../diagrams/can-capture/)
-- [Issue #48](https://github.com/benoit-bremaud/can-sniffer/issues/48)
+- [Issue #48](https://github.com/benoit-bremaud/busscope/issues/48)
 - [ESP32-C3 bench log](../../hardware/esp32c3-can-bench.md)

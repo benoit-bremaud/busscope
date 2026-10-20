@@ -10,7 +10,7 @@ command `0x04` response. It does not model UI navigation or hardware access.
 ```mermaid
 flowchart LR
     Operator[Operator]
-    subgraph System[CAN Sniffer]
+    subgraph System[BusScope]
         UC1((Inspect a module state))
         UC2((Identify an active module fault))
     end

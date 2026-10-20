@@ -1,6 +1,6 @@
 # Sequence diagram — module measurements — command 0x03
 
-> **Feature**: issue #3 — [Decode individual charger module measurements](https://github.com/benoit-bremaud/can-sniffer/issues/3)
+> **Feature**: issue #3 — [Decode individual charger module measurements](https://github.com/benoit-bremaud/busscope/issues/3)
 > **Source specs**: `docs/architecture/specs/module-measurements.md`
 
 ## Context

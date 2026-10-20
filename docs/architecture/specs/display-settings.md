@@ -1,6 +1,6 @@
 # Persistent display settings
 
-> **Feature**: issue #26 — [Add persistent display settings](https://github.com/benoit-bremaud/can-sniffer/issues/26)
+> **Feature**: issue #26 — [Add persistent display settings](https://github.com/benoit-bremaud/busscope/issues/26)
 > **Status**: implemented
 
 ## Objective
@@ -52,7 +52,7 @@ The application bootstrap configures the stable `QSettings` namespace before cre
 repository:
 
 - organization: `benoit-bremaud`;
-- application: `can-sniffer`.
+- application: `busscope`.
 
 The Qt adapter owns stable keys under a `display` group:
 

@@ -1,6 +1,6 @@
 # CANable 2.0 compatible adapter bring-up
 
-This checklist prepares the ordered USB-C CANable 2.0 compatible adapter for CAN Sniffer. Treat
+This checklist prepares the ordered USB-C CANable 2.0 compatible adapter for BusScope. Treat
 the board as a clone until its USB identity, firmware, terminal labels, and termination switch are
 verified on arrival.
 
@@ -52,7 +52,7 @@ sudo ip link set can0 up
 ip -details -statistics link show can0
 ```
 
-Observe traffic before starting CAN Sniffer:
+Observe traffic before starting BusScope:
 
 ```bash
 candump -e -x can0
@@ -70,12 +70,12 @@ and supported silent-mode command. If silent mode cannot be proven, use an isola
 or install a verified compatible candleLight firmware before connecting to the live charger. Do
 not silently fall back to normal mode for the first physical session.
 
-## 3. Validate read-only CAN Sniffer operation
+## 3. Validate read-only BusScope operation
 
 With valid passive traffic visible in `candump`, start the application and select `can0`:
 
 ```bash
-.venv/bin/can-sniffer
+.venv/bin/busscope
 ```
 
 Confirm that extended Infypower frames contain eight bytes and that decoded values are plausible.
@@ -83,7 +83,7 @@ Record no real capture in the repository.
 
 ## 4. Prepare an explicitly authorized transmission session
 
-Complete this step only after wiring and passive capture are validated. Stop CAN Sniffer and
+Complete this step only after wiring and passive capture are validated. Stop BusScope and
 `candump` before reconfiguring the interface.
 
 For candleLight / `gs_usb`:

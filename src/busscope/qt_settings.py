@@ -4,7 +4,7 @@ import logging
 
 from PySide6.QtCore import QSettings
 
-from can_sniffer.preferences import DisplayPreferences
+from busscope.preferences import DisplayPreferences
 
 logger = logging.getLogger(__name__)
 

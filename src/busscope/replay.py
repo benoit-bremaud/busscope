@@ -7,8 +7,8 @@ from dataclasses import replace
 from io import StringIO
 from pathlib import Path
 
-from can_sniffer.analysis import CapturedFrame
-from can_sniffer.protocol import CanFrame, ProtocolDecoder
+from busscope.analysis import CapturedFrame
+from busscope.protocol import CanFrame, ProtocolDecoder
 
 
 class CsvCaptureLoader:
@@ -39,7 +39,7 @@ class CsvCaptureLoader:
         """Load and validate CSV content without filesystem access."""
         reader = csv.DictReader(StringIO(content))
         if tuple(reader.fieldnames or ()) != cls._HEADERS:
-            raise ValueError("CSV header does not match the CAN Sniffer export format")
+            raise ValueError("CSV header does not match the BusScope export format")
 
         records: list[CapturedFrame] = []
         previous_timestamp = 0.0

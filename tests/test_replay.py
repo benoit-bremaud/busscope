@@ -2,9 +2,9 @@ from pathlib import Path
 
 import pytest
 
-from can_sniffer.analysis import CapturedFrame, CsvExporter
-from can_sniffer.protocol import CanFrame, ProtocolDecoder
-from can_sniffer.replay import CsvCaptureLoader, ReplayController
+from busscope.analysis import CapturedFrame, CsvExporter
+from busscope.protocol import CanFrame, ProtocolDecoder
+from busscope.replay import CsvCaptureLoader, ReplayController
 
 CSV = (
     "timestamp_seconds,arbitration_id,is_extended_id,is_error_frame,data,description,"

@@ -6,7 +6,7 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 from io import StringIO
 
-from can_sniffer.protocol import DecodeResult
+from busscope.protocol import DecodeResult
 
 
 @dataclass(frozen=True, slots=True)

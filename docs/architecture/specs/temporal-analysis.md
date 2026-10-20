@@ -1,6 +1,6 @@
 # Temporal analysis specification
 
-> **Feature**: issue #17 — [temporal analysis of captured CAN frames](https://github.com/benoit-bremaud/can-sniffer/issues/17)
+> **Feature**: issue #17 — [temporal analysis of captured CAN frames](https://github.com/benoit-bremaud/busscope/issues/17)
 
 ## Scope
 

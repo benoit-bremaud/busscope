@@ -17,7 +17,7 @@ flowchart LR
     Operator[Operator]
     Send([Send one confirmed Infypower frame])
 
-    subgraph System[CAN Sniffer]
+    subgraph System[BusScope]
         Send
     end
 

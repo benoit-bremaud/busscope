@@ -7,6 +7,11 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+
+- Renamed from can-sniffer to BusScope: the package, distribution and command are now
+  `busscope`. Display preferences saved under the old application name are not migrated.
+
 ### Added
 
 - Native slcan capture backend, so a serial CAN adapter can be used without configuring a

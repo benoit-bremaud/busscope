@@ -12,7 +12,7 @@ from typing import Protocol, cast
 
 import can
 
-from can_sniffer.protocol import CanFrame
+from busscope.protocol import CanFrame
 
 _IP_TIMEOUT_SECONDS = 5.0
 

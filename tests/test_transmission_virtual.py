@@ -2,8 +2,8 @@ from uuid import uuid4
 
 import can
 
-from can_sniffer.socketcan_transmission import SocketCanTransmitter
-from can_sniffer.transmission import ManualTransmission
+from busscope.socketcan_transmission import SocketCanTransmitter
+from busscope.transmission import ManualTransmission
 
 
 class ReadyInterface:

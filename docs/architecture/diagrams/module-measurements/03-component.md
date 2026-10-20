@@ -1,6 +1,6 @@
 # Component diagram — individual module measurements
 
-> **Feature**: issue #3 — [Decode individual module measurements](https://github.com/benoit-bremaud/can-sniffer/issues/3)
+> **Feature**: issue #3 — [Decode individual module measurements](https://github.com/benoit-bremaud/busscope/issues/3)
 > **Source specs**: `docs/architecture/specs/module-measurements.md`
 
 ## Context

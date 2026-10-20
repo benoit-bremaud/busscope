@@ -10,7 +10,7 @@ charger module through Infypower command `0x06`.
 ```mermaid
 flowchart LR
     Operator[Operator]
-    subgraph System[CAN Sniffer]
+    subgraph System[BusScope]
         UC1((Inspect module AC input voltages))
         UC2((Inspect an invalid AC measurement frame))
     end

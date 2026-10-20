@@ -1,6 +1,6 @@
 # Module topology decoding
 
-> **Status**: implemented for Issue [#37](https://github.com/benoit-bremaud/can-sniffer/issues/37)
+> **Status**: implemented for Issue [#37](https://github.com/benoit-bremaud/busscope/issues/37)
 >
 > **Protocol reference**: *Charger module CAN Communication Protocol V1.13*, commands
 > `0x02` and `0x04`
@@ -24,7 +24,7 @@ extended diagnostics, and barcode decoding are outside this feature.
 
 Offline replay continues to preserve raw frame metadata, description, and diagnostics without
 re-decoding semantic protocol values. Restoring all supported decoded values during replay is
-tracked separately by Issue [#40](https://github.com/benoit-bremaud/can-sniffer/issues/40).
+tracked separately by Issue [#40](https://github.com/benoit-bremaud/busscope/issues/40).
 
 ## Protocol interpretation
 

@@ -182,7 +182,7 @@ at fault: its pins, timing, frame and single-shot behaviour never changed.
    exact error cannot be diagnosed from TX_FAILED alone. Stop and power down before reconnecting.
 8. After cleanup, a fresh `start` is required. Bus-off requires MCU reset and inspection.
 9. Only after Cangaroo reception succeeds, stop it and configure the CANable's compatible
-   SocketCAN path separately. Then select that interface in can-sniffer. Never run two serial
+   SocketCAN path separately. Then select that interface in busscope. Never run two serial
    clients on the CANable simultaneously; the desktop app does not accept `ttyACM*` directly.
 
 Record pass/fail and software versions locally, without identifying charger data. Hardware

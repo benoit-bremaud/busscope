@@ -1,6 +1,6 @@
 import pytest
 
-from can_sniffer.protocol import CanFrame, ProtocolDecoder
+from busscope.protocol import CanFrame, ProtocolDecoder
 
 
 def test_decodes_documented_extended_identifier() -> None:

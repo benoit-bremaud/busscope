@@ -2,8 +2,8 @@ from pathlib import Path
 
 from PySide6.QtCore import QSettings
 
-from can_sniffer.preferences import DisplayPreferences, IdentifierFormat
-from can_sniffer.qt_settings import QtSettingsRepository
+from busscope.preferences import DisplayPreferences, IdentifierFormat
+from busscope.qt_settings import QtSettingsRepository
 
 
 def create_settings(path: Path) -> QSettings:

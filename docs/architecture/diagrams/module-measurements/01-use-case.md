@@ -1,6 +1,6 @@
 # Use-case diagram — individual module measurements
 
-> **Feature**: issue #3 — [Decode individual charger module measurements](https://github.com/benoit-bremaud/can-sniffer/issues/3)
+> **Feature**: issue #3 — [Decode individual charger module measurements](https://github.com/benoit-bremaud/busscope/issues/3)
 > **Source specs**: `docs/architecture/specs/module-measurements.md`
 
 ## Context
@@ -13,7 +13,7 @@ module. It does not model sending a read request or any CAN transmission.
 ```mermaid
 flowchart LR
     Operator(("Operator"))
-    subgraph System["CAN Sniffer"]
+    subgraph System["BusScope"]
         subgraph Decode["Read-only protocol analysis"]
             UC1(("Inspect individual module output measurements"))
         end

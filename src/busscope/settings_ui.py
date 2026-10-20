@@ -11,7 +11,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from can_sniffer.preferences import DisplayPreferences, IdentifierFormat, PreferencesRepository
+from busscope.preferences import DisplayPreferences, IdentifierFormat, PreferencesRepository
 
 
 class SettingsWidget(QWidget):

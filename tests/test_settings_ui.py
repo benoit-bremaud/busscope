@@ -1,8 +1,8 @@
 import pytest
 from PySide6.QtWidgets import QApplication
 
-from can_sniffer.preferences import DisplayPreferences, IdentifierFormat
-from can_sniffer.settings_ui import SettingsWidget
+from busscope.preferences import DisplayPreferences, IdentifierFormat
+from busscope.settings_ui import SettingsWidget
 
 
 class RecordingRepository:

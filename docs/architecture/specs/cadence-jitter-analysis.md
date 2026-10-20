@@ -1,6 +1,6 @@
 # CAN frame cadence jitter analysis
 
-> **Feature**: epic #23 — [Add CAN frame cadence jitter analysis](https://github.com/benoit-bremaud/can-sniffer/issues/23)
+> **Feature**: epic #23 — [Add CAN frame cadence jitter analysis](https://github.com/benoit-bremaud/busscope/issues/23)
 > **Status**: implemented
 
 ## Objective

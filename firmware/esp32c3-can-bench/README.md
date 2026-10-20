@@ -3,7 +3,7 @@
 **Bench only. Physically disconnect every charger before powering or using this firmware.**
 It emits synthetic test frames; it is neither a charger simulator nor a diagnostic command tool.
 The [approved design](../../docs/architecture/specs/esp32c3-can-bench.md) is tracked by
-[Issue #45](https://github.com/benoit-bremaud/can-sniffer/issues/45).
+[Issue #45](https://github.com/benoit-bremaud/busscope/issues/45).
 
 ## Software-only preparation
 
@@ -191,7 +191,7 @@ before powering for upload, then reconnect the isolated bench with power removed
 ## Sniffer profile (slcan, receive only)
 
 `esp32c3-slcan` turns the board into a CAN adapter that speaks the LAWICEL slcan protocol
-over its USB CDC link, so `can-sniffer` reaches it through the application's slcan backend
+over its USB CDC link, so `busscope` reaches it through the application's slcan backend
 with no change. It is the only profile meant to face a bus the operator does not own.
 
 Two properties make that acceptable, and both are enforced rather than promised:

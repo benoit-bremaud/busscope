@@ -10,7 +10,7 @@ from a valid Infypower command `0x01` response.
 ```mermaid
 flowchart LR
     Operator[Operator]
-    subgraph System[CAN Sniffer]
+    subgraph System[BusScope]
         UC1((Inspect system output measurements))
         UC2((Inspect an undecodable measurement frame))
     end

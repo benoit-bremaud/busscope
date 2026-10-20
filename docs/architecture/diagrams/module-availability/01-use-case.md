@@ -10,7 +10,7 @@ reported by one charger module through Infypower command `0x0C`.
 ```mermaid
 flowchart LR
     Operator[Operator]
-    subgraph System[CAN Sniffer]
+    subgraph System[BusScope]
         UC1((Inspect module available output capacity))
         UC2((Identify a powered-off module))
     end

@@ -4,21 +4,21 @@ import pytest
 from PySide6.QtCore import QCoreApplication, QSettings
 from PySide6.QtWidgets import QApplication
 
-from can_sniffer.analysis import CapturedFrame, IdentifierStatistics, TemporalAnalyzer
-from can_sniffer.app import create_application, create_capture_window
-from can_sniffer.capture import CanInterface, CaptureConfiguration
-from can_sniffer.preferences import DisplayPreferences, IdentifierFormat
-from can_sniffer.protocol import (
+from busscope.analysis import CapturedFrame, IdentifierStatistics, TemporalAnalyzer
+from busscope.app import create_application, create_capture_window
+from busscope.capture import CanInterface, CaptureConfiguration
+from busscope.preferences import DisplayPreferences, IdentifierFormat
+from busscope.protocol import (
     CanFrame,
     DecodeResult,
     ModuleRatings,
     ModuleState,
     SystemMeasurements,
 )
-from can_sniffer.settings_ui import SettingsWidget
-from can_sniffer.transmission import ManualTransmission
-from can_sniffer.transmission_ui import TransmissionWidget
-from can_sniffer.ui import CaptureController, CaptureWindow
+from busscope.settings_ui import SettingsWidget
+from busscope.transmission import ManualTransmission
+from busscope.transmission_ui import TransmissionWidget
+from busscope.ui import CaptureController, CaptureWindow
 
 
 class FakeController:
@@ -162,11 +162,11 @@ def test_window_loads_and_replays_csv_capture(
         encoding="utf-8",
     )
     monkeypatch.setattr(
-        "can_sniffer.ui.QFileDialog.getOpenFileName",
+        "busscope.ui.QFileDialog.getOpenFileName",
         lambda *args: (str(source), "CSV files (*.csv)"),
     )
     clock = iter([10.0, 10.0])
-    monkeypatch.setattr("can_sniffer.ui.time.monotonic", lambda: next(clock))
+    monkeypatch.setattr("busscope.ui.time.monotonic", lambda: next(clock))
     window = create_test_window(FakeController([]))
 
     window.load_replay()
@@ -194,7 +194,7 @@ def test_window_load_replay_resets_display_pause(
         encoding="utf-8",
     )
     monkeypatch.setattr(
-        "can_sniffer.ui.QFileDialog.getOpenFileName",
+        "busscope.ui.QFileDialog.getOpenFileName",
         lambda *args: (str(source), "CSV files (*.csv)"),
     )
     window = create_test_window(FakeController([]))
@@ -221,11 +221,11 @@ def test_window_reports_replay_completion(
         encoding="utf-8",
     )
     monkeypatch.setattr(
-        "can_sniffer.ui.QFileDialog.getOpenFileName",
+        "busscope.ui.QFileDialog.getOpenFileName",
         lambda *args: (str(source), "CSV files (*.csv)"),
     )
     clock = iter([10.0, 10.0])
-    monkeypatch.setattr("can_sniffer.ui.time.monotonic", lambda: next(clock))
+    monkeypatch.setattr("busscope.ui.time.monotonic", lambda: next(clock))
     window = create_test_window(FakeController([]))
     window.load_replay()
     window.play_replay()
@@ -392,7 +392,7 @@ def test_window_starts_relative_timestamps_at_first_capture(
 ) -> None:
     del qt_application
     clock = iter([100.0, 101.5])
-    monkeypatch.setattr("can_sniffer.ui.time.monotonic", lambda: next(clock))
+    monkeypatch.setattr("busscope.ui.time.monotonic", lambda: next(clock))
     window = create_test_window(
         FakeController([DecodeResult(CanFrame(0x123, b"\x00"), None, "Frame")])
     )
@@ -411,7 +411,7 @@ def test_window_exports_all_retained_records(
     del qt_application
     destination = tmp_path / "capture.csv"
     monkeypatch.setattr(
-        "can_sniffer.ui.QFileDialog.getSaveFileName",
+        "busscope.ui.QFileDialog.getSaveFileName",
         lambda *args: (str(destination), "CSV files (*.csv)"),
     )
     window = create_test_window(
@@ -571,14 +571,14 @@ def test_application_composition_builds_capture_window(
     tmp_path: Path,
 ) -> None:
     settings = QSettings(str(tmp_path / "settings.ini"), QSettings.Format.IniFormat)
-    monkeypatch.setattr("can_sniffer.app.QSettings", lambda: settings)
+    monkeypatch.setattr("busscope.app.QSettings", lambda: settings)
     application = create_application([])
     window = create_capture_window()
 
     assert application is qt_application
     assert isinstance(window, CaptureWindow)
     assert QCoreApplication.organizationName() == "benoit-bremaud"
-    assert QCoreApplication.applicationName() == "can-sniffer"
+    assert QCoreApplication.applicationName() == "busscope"
 
 
 def test_window_applies_settings_without_changing_capture_state(

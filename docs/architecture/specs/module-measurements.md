@@ -1,6 +1,6 @@
 # Individual module measurements specification
 
-> **Feature**: issue #3 — [Decode individual charger module measurements](https://github.com/benoit-bremaud/can-sniffer/issues/3)
+> **Feature**: issue #3 — [Decode individual charger module measurements](https://github.com/benoit-bremaud/busscope/issues/3)
 > **Source**: Infypower *Charger module CAN Communication Protocol V1.13*, section 2.3, command `0x03`
 
 ## Scope

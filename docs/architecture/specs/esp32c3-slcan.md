@@ -1,13 +1,13 @@
 # ESP32-C3 slcan sniffer profile
 
-> **Feature**: [Issue #50](https://github.com/benoit-bremaud/can-sniffer/issues/50)
+> **Feature**: [Issue #50](https://github.com/benoit-bremaud/busscope/issues/50)
 > **Status**: conception approved 2026-09-11 and implemented in the same pull request.
 > The protocol was exercised on the board; capture against real traffic is outstanding.
 
 ## Purpose and boundary
 
 Turn the ESP32-C3 into a receive-only CAN adapter whose silence is guaranteed by the
-controller rather than promised by a command, so `can_sniffer` can observe a bus nobody owns
+controller rather than promised by a command, so `busscope` can observe a bus nobody owns
 through the backend shipped in #49, with no application change.
 
 It does not transmit, decode charger protocols, determine an unknown bitrate, or deliver bus
@@ -137,6 +137,6 @@ error frames need an adapter exposing a native CAN interface.
 ## References
 
 - [UML views](../diagrams/esp32c3-slcan/)
-- [Issue #50](https://github.com/benoit-bremaud/can-sniffer/issues/50)
+- [Issue #50](https://github.com/benoit-bremaud/busscope/issues/50)
 - [CANable 2.0 notes](../../hardware/canable-2.0.md)
 - [slcan capture backend](slcan-capture.md)

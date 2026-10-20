@@ -1,6 +1,13 @@
-# CAN Sniffer
+# BusScope
 
-Graphical CAN bus monitor for Infypower charger modules on Linux.
+**The stethoscope for your buses.**
+
+BusScope is a listen-only, multi-bus observation tool for EV-charging equipment: a USB box with
+isolated CAN / CAN FD, RS485, RS232, UART and CP/PP ports, driven by one desktop application.
+Like a stethoscope, it listens to a bus without ever speaking on it. The box is being designed
+(see [`docs/decisions/`](docs/decisions/README.md)); this release ships the CAN monitor below.
+
+Today BusScope is a graphical CAN bus monitor for Infypower charger modules on Linux.
 
 The charger protocol documented in the supplied V1.13 specification uses CAN 2.0B,
 29-bit extended identifiers, 8-byte payloads, and a bitrate of 125 kbit/s.
@@ -53,7 +60,7 @@ Actions also runs secret detection, CodeQL analysis, dependency review, and Open
 Start the graphical application from the work environment:
 
 ```bash
-.venv/bin/can-sniffer
+.venv/bin/busscope
 ```
 
 For a hardware-free smoke test, create a virtual CAN interface and run the application on
@@ -63,7 +70,7 @@ For a hardware-free smoke test, create a virtual CAN interface and run the appli
 sudo modprobe vcan
 sudo ip link add dev vcan0 type vcan
 sudo ip link set vcan0 up
-.venv/bin/can-sniffer
+.venv/bin/busscope
 ```
 
 The current protocol decoder covers the documented Infypower system measurements, individual

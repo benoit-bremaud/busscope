@@ -1,6 +1,6 @@
 # Sequence diagram — display settings — load persisted preferences
 
-> **Feature**: issue #26 — [Add persistent display settings](https://github.com/benoit-bremaud/can-sniffer/issues/26)
+> **Feature**: issue #26 — [Add persistent display settings](https://github.com/benoit-bremaud/busscope/issues/26)
 > **Source specs**: `docs/architecture/specs/display-settings.md` §Rules, §Persistence keys
 
 ## Context

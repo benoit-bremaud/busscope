@@ -5,7 +5,7 @@ import can
 import pytest
 from conftest import FakeControllerMode
 
-from can_sniffer.capture import (
+from busscope.capture import (
     CanInterface,
     CaptureConfiguration,
     IpLinkControllerMode,
@@ -215,8 +215,8 @@ def test_ip_link_reads_the_controller_mode(
         invocations.append((argv, kwargs))
         return type("Completed", (), {"returncode": 0, "stdout": payload})()
 
-    monkeypatch.setattr("can_sniffer.capture.shutil.which", lambda name: "/usr/bin/ip")
-    monkeypatch.setattr("can_sniffer.capture.subprocess.run", run)
+    monkeypatch.setattr("busscope.capture.shutil.which", lambda name: "/usr/bin/ip")
+    monkeypatch.setattr("busscope.capture.subprocess.run", run)
 
     assert IpLinkControllerMode().is_listen_only("can0") is expected
 
@@ -239,20 +239,20 @@ def test_ip_link_never_guesses_when_it_cannot_ask(
     def explode(*args: object, **kwargs: object) -> object:
         raise failure
 
-    monkeypatch.setattr("can_sniffer.capture.shutil.which", lambda name: "/usr/bin/ip")
-    monkeypatch.setattr("can_sniffer.capture.subprocess.run", explode)
+    monkeypatch.setattr("busscope.capture.shutil.which", lambda name: "/usr/bin/ip")
+    monkeypatch.setattr("busscope.capture.subprocess.run", explode)
     assert IpLinkControllerMode().is_listen_only("can0") is None
 
 
 def test_ip_link_returns_none_without_iproute2(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr("can_sniffer.capture.shutil.which", lambda name: None)
+    monkeypatch.setattr("busscope.capture.shutil.which", lambda name: None)
     assert IpLinkControllerMode().is_listen_only("can0") is None
 
 
 def test_ip_link_returns_none_when_the_query_fails(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr("can_sniffer.capture.shutil.which", lambda name: "/usr/bin/ip")
+    monkeypatch.setattr("busscope.capture.shutil.which", lambda name: "/usr/bin/ip")
     monkeypatch.setattr(
-        "can_sniffer.capture.subprocess.run",
+        "busscope.capture.subprocess.run",
         lambda *a, **k: type("Completed", (), {"returncode": 1, "stdout": ""})(),
     )
     assert IpLinkControllerMode().is_listen_only("can0") is None

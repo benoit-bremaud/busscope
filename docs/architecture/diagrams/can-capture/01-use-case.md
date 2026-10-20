@@ -10,7 +10,7 @@ not describe the future graphical layout.
 ```mermaid
 flowchart LR
     Operator[Operator]
-    subgraph System[CAN Sniffer]
+    subgraph System[BusScope]
         UC1((Start a read-only CAN capture))
         UC2((Stop a CAN capture))
         UC3((Inspect a capture error))

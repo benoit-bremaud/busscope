@@ -1,12 +1,12 @@
 import can
 from conftest import FakeControllerMode
 
-from can_sniffer.capture import CaptureConfiguration, PythonCanAdapter
+from busscope.capture import CaptureConfiguration, PythonCanAdapter
 
 
 def test_adapter_contract_with_python_can_virtual_backend() -> None:
-    receiver = can.Bus(interface="virtual", channel="can-sniffer-integration")
-    sender = can.Bus(interface="virtual", channel="can-sniffer-integration")
+    receiver = can.Bus(interface="virtual", channel="busscope-integration")
+    sender = can.Bus(interface="virtual", channel="busscope-integration")
     adapter = PythonCanAdapter(lambda configuration: receiver, FakeControllerMode(True))
 
     try:

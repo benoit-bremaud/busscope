@@ -2,7 +2,7 @@ from dataclasses import FrozenInstanceError
 
 import pytest
 
-from can_sniffer.preferences import DisplayPreferences, IdentifierFormat
+from busscope.preferences import DisplayPreferences, IdentifierFormat
 
 
 def test_preferences_expose_documented_defaults() -> None:

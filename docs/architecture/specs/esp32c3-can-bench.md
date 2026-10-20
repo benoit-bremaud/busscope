@@ -1,6 +1,6 @@
 # ESP32-C3 CAN bench generator
 
-> **Feature**: [Issue #45](https://github.com/benoit-bremaud/can-sniffer/issues/45)
+> **Feature**: [Issue #45](https://github.com/benoit-bremaud/busscope/issues/45)
 > **Status**: conception approved by the maintainer on 2026-09-09 — implemented, with the
 > three-button profile hardware-accepted on 2026-09-10 (all three scenarios, counters
 > recorded). The manual and autonomous profiles have each been observed transmitting and
@@ -195,7 +195,7 @@ classes. USB parsing and logging remain bounded and must not block control proce
    frame per second, then `stop` and verify no new attempts. Check USB disconnect/reset behavior.
 7. Perform controlled receiver-absent and fault tests with power removed before rewiring.
 8. First validate Cangaroo. Then, with Cangaroo stopped, configure a compatible SocketCAN interface
-   separately for can-sniffer reception. Its GUI cannot directly use the SLCAN serial port.
+   separately for busscope reception. Its GUI cannot directly use the SLCAN serial port.
 
 ## Verification and traceability
 
