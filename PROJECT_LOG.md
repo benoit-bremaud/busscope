@@ -106,4 +106,7 @@ ordinary commits from that PR's branch.
     - `ADR-0006` — Electron + React over the Python core, pending a throughput spike.
     - `ADR-0007` — AI agent as a read-only MCP server in the Python core.
     - `ADR-0008` — FX2 + PulseView through an isolated logic tap; Analog Discovery 3 later.
-- **PROJECT_LOG.md created** (issue #59) — retroactive reconstruction from inception to PR #57.
+- **PR #60 merged** (`28bd033`) — `docs(log): create PROJECT_LOG.md` (`docs/59-project-log`,
+  closes #59). Retroactive reconstruction from inception to PR #57. One review round: the SHA
+  convention was scoped to PR merge commits (`bd8ffa8`). Docstring coverage (79.8 %, floor 90)
+  found below the floor on `main` during the local review; tracked in #61.
