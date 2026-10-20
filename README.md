@@ -2,9 +2,10 @@
 
 **The stethoscope for your buses.**
 
-BusScope is a listen-only, multi-bus observation tool for EV-charging equipment: a USB box with
+BusScope is a multi-bus observation tool for EV-charging equipment: a USB box with
 isolated CAN / CAN FD, RS485, RS232, UART and CP/PP ports, driven by one desktop application.
-Like a stethoscope, it listens to a bus without ever speaking on it. The box is being designed
+Like a stethoscope, it listens to a bus: capture is listen-only by default, and the only way
+to send a frame is the guarded manual transmission described below, disabled at every startup. The box is being designed
 (see [`docs/decisions/`](docs/decisions/README.md)); this release ships the CAN monitor below.
 
 Today BusScope is a graphical CAN bus monitor for Infypower charger modules on Linux.
