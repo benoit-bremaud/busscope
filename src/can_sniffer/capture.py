@@ -154,6 +154,7 @@ class PythonCanAdapter:
         bus_factory: BusFactory | None = None,
         controller_mode: ControllerModePort | None = None,
     ) -> None:
+        """Inject the bus factory and controller-mode probe; defaults talk to real hardware."""
         self._bus_factory = bus_factory or self._create_bus
         self._controller_mode = controller_mode or IpLinkControllerMode()
         self._bus: CanBus | None = None
@@ -237,6 +238,7 @@ class PythonCanAdapter:
 
     @staticmethod
     def _create_bus(configuration: CaptureConfiguration) -> CanBus:
+        """Open the python-can bus for the configured backend, honouring listen-only."""
         if configuration.interface is CanInterface.SLCAN:
             bus = can.Bus(
                 interface="slcan",

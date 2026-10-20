@@ -64,6 +64,7 @@ class CaptureWindow(QMainWindow):
         settings_widget: SettingsWidget,
         transmission_widget: TransmissionWidget,
     ) -> None:
+        """Wire the controller, preferences and child widgets into the main window."""
         super().__init__()
         self._controller = controller
         self._preferences = preferences
@@ -407,6 +408,7 @@ class CaptureWindow(QMainWindow):
         self.status_label.setText("Replay reset")
 
     def _advance_replay(self) -> None:
+        """Release replay records that became due since the last tick, then stop at the end."""
         was_playing = self._replay.is_playing
         now = time.monotonic()
         due = self._replay.advance(now - self._replay_last_tick)
@@ -460,6 +462,7 @@ class CaptureWindow(QMainWindow):
             logger.warning("Failed to clean up after a CAN polling error", exc_info=True)
 
     def _poll_capture(self) -> None:
+        """Drain at most one bounded batch of frames per tick so the UI stays responsive."""
         if not self._capturing:
             return
         for _ in range(self._MAX_FRAMES_PER_TICK):
@@ -486,16 +489,19 @@ class CaptureWindow(QMainWindow):
                 self._add_to_display(captured)
 
     def _add_to_display(self, captured: CapturedFrame) -> None:
+        """Append one row and drop the oldest beyond the display cap."""
         self.frame_list.addItem(self._format_result(captured.result))
         while self.frame_list.count() > self._MAX_DISPLAYED_FRAMES:
             self.frame_list.takeItem(0)
 
     def _refresh_display(self) -> None:
+        """Re-render the list unless the display is paused."""
         if self._display_paused:
             return
         self._render_display()
 
     def _render_display(self) -> None:
+        """Rebuild the visible list from the stored records honouring pause and filter."""
         self.frame_list.clear()
         display_end = self._display_pause_index if self._display_paused else None
         matching = [
@@ -507,9 +513,11 @@ class CaptureWindow(QMainWindow):
             self._add_to_display(captured)
 
     def _format_number(self, value: float) -> str:
+        """Format a number with the operator's chosen precision."""
         return f"{value:.{self._preferences.numeric_precision}f}"
 
     def _format_identifier(self, arbitration_id: int) -> str:
+        """Format an identifier in the operator's chosen base."""
         if self._preferences.identifier_format is IdentifierFormat.DECIMAL:
             return str(arbitration_id)
         return f"0x{arbitration_id:X}"

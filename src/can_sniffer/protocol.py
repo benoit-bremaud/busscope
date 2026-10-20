@@ -241,6 +241,7 @@ class ProtocolDecoder:
         )
 
     def _parse_identifier(self, raw: int) -> InfypowerIdentifier:
+        """Split a 29-bit identifier into its error, device, command and address fields."""
         return InfypowerIdentifier(
             raw=raw,
             error_code=(raw >> self._ERROR_SHIFT) & self._ERROR_MASK,
@@ -252,6 +253,7 @@ class ProtocolDecoder:
 
     @staticmethod
     def _decode_module_state(state_bytes: bytes) -> ModuleState:
+        """Map the three big-endian status bytes onto named module state flags."""
         state_2, state_1, state_0 = state_bytes
         return ModuleState(
             communication_interrupt=bool(state_2 & 0x80),
@@ -280,8 +282,10 @@ class ProtocolDecoder:
 
     @staticmethod
     def _decode_tenth_volt(value_bytes: bytes) -> float:
+        """Decode an unsigned big-endian value expressed in tenths of a volt."""
         return int.from_bytes(value_bytes, byteorder="big", signed=False) / 10
 
     @staticmethod
     def _decode_uint16(value_bytes: bytes) -> int:
+        """Decode an unsigned big-endian integer of any byte length."""
         return int.from_bytes(value_bytes, byteorder="big", signed=False)

@@ -152,6 +152,7 @@ class CsvExporter:
 
     @staticmethod
     def _decoded_values(result: DecodeResult) -> str:
+        """Summarise the decoded measurements on one CSV cell; empty when nothing decoded."""
         values: list[str] = []
         if result.system_measurements is not None:
             values.append(

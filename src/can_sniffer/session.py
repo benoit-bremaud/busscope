@@ -13,6 +13,7 @@ class CaptureSession:
     """Open a CAN port, decode received frames, and close the port safely."""
 
     def __init__(self, port: CanCapturePort, decoder: ProtocolDecoder) -> None:
+        """Bind the capture port and decoder; the session starts stopped."""
         self._port = port
         self._decoder = decoder
         self._capturing = False

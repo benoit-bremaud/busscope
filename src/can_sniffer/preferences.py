@@ -25,6 +25,7 @@ class DisplayPreferences:
     show_temporal_statistics: bool = True
 
     def __post_init__(self) -> None:
+        """Reject invalid values so a preferences object is always safe to render."""
         if not isinstance(self.identifier_format, IdentifierFormat):
             raise ValueError("identifier_format must be an IdentifierFormat")
         if type(self.numeric_precision) is not int or not 0 <= self.numeric_precision <= 6:
@@ -65,6 +66,7 @@ class DisplayPreferences:
         )
 
         def boolean_value(name: str, default: bool) -> bool:
+            """Return the stored value only when it is a real bool, else the default."""
             value = values.get(name)
             return value if type(value) is bool else default
 

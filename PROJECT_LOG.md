@@ -110,3 +110,5 @@ ordinary commits from that PR's branch.
   closes #59). Retroactive reconstruction from inception to PR #57. One review round: the SHA
   convention was scoped to PR merge commits (`bd8ffa8`). Docstring coverage (79.8 %, floor 90)
   found below the floor on `main` during the local review; tracked in #61.
+- **PR #62 merged** (`8d0e32e`) — `docs(log): record PR #60 in the project log`
+  (`docs/59-project-log-pr60`). Adds the PR #60 entry above.

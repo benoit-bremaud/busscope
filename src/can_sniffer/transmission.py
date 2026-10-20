@@ -18,6 +18,7 @@ class ManualTransmission:
     payload: bytes
 
     def __post_init__(self) -> None:
+        """Reject malformed requests so nothing invalid reaches the bus."""
         if _CHANNEL_PATTERN.fullmatch(self.channel) is None:
             raise ValueError("CAN channel must be a valid Linux interface name")
         if not 0 <= self.arbitration_id <= MAX_EXTENDED_IDENTIFIER:
