@@ -123,3 +123,6 @@ ordinary commits from that PR's branch.
   fixed in `da00aef`. Post-merge: GitHub repository renamed to `busscope` and the local directory
   moved; the diagnostics repository switched to `BUSSCOPE_SRC` (can-sniffer-diagnostics#1,
   `b482807`). #66 closed as not planned: CP/PP measurement belongs to V-SEA.
+- **PR #68 merged** (`ec83491`) — `style(src): fix ruff format drift in source files`
+  (`style/64-ruff-format`, closes #64). `ruff format` applied to `src` and `tests` (`54a13fc`);
+  `ruff format --check` now enforced in `quality.yml` (`678af61`). Codex review: no findings.
