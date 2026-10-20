@@ -58,9 +58,7 @@ class IpLinkCanInterfaceInspector:
         if not isinstance(data, dict):
             raise RuntimeError("cannot verify CAN controller modes")
         ctrlmode = data.get("ctrlmode", [])
-        if not isinstance(ctrlmode, list) or not all(
-            isinstance(mode, str) for mode in ctrlmode
-        ):
+        if not isinstance(ctrlmode, list) or not all(isinstance(mode, str) for mode in ctrlmode):
             raise RuntimeError("cannot verify CAN controller modes")
         modes = {mode.upper() for mode in ctrlmode}
         if "LISTEN-ONLY" in modes:

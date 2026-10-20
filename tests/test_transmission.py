@@ -9,12 +9,8 @@ from busscope.transmission import ManualTransmission
     ("identifier", "expected"),
     [("0", 0), ("0x1FFFFFFF", 0x1FFFFFFF), ("aBcDe", 0xABCDE)],
 )
-def test_manual_transmission_parses_valid_boundaries(
-    identifier: str, expected: int
-) -> None:
-    request = ManualTransmission.from_text(
-        " can0 ", identifier, "01 02 a3 B4 05 06 07 08"
-    )
+def test_manual_transmission_parses_valid_boundaries(identifier: str, expected: int) -> None:
+    request = ManualTransmission.from_text(" can0 ", identifier, "01 02 a3 B4 05 06 07 08")
 
     assert request.channel == "can0"
     assert request.arbitration_id == expected
@@ -25,9 +21,7 @@ def test_manual_transmission_parses_valid_boundaries(
 @pytest.mark.parametrize("identifier", ["", "0x", "-1", "123G", "20000000"])
 def test_manual_transmission_rejects_invalid_identifier(identifier: str) -> None:
     with pytest.raises(ValueError, match="identifier"):
-        ManualTransmission.from_text(
-            "can0", identifier, "01 02 03 04 05 06 07 08"
-        )
+        ManualTransmission.from_text("can0", identifier, "01 02 03 04 05 06 07 08")
 
 
 @pytest.mark.parametrize(
@@ -50,9 +44,7 @@ def test_manual_transmission_rejects_invalid_payload(payload: str) -> None:
 @pytest.mark.parametrize("channel", ["", " can0 extra ", "-can0", "a" * 16])
 def test_manual_transmission_rejects_invalid_channel(channel: str) -> None:
     with pytest.raises(ValueError, match="channel"):
-        ManualTransmission.from_text(
-            channel, "123", "01 02 03 04 05 06 07 08"
-        )
+        ManualTransmission.from_text(channel, "123", "01 02 03 04 05 06 07 08")
 
 
 def test_manual_transmission_enforces_invariants_and_is_immutable() -> None:

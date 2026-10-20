@@ -75,8 +75,7 @@ def test_csv_loader_ignores_decoded_values_and_preserves_description() -> None:
 
 def test_csv_loader_combines_current_and_unique_stored_diagnostics() -> None:
     content = (
-        CSV.split("\n", maxsplit=1)[0]
-        + "\n0.000000,0x123,false,false,01 02,Stored,,"
+        CSV.split("\n", maxsplit=1)[0] + "\n0.000000,0x123,false,false,01 02,Stored,,"
         "Expected an 8-byte payload; historical warning\n"
     )
 

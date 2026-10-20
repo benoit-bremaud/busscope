@@ -115,7 +115,7 @@ def test_receive_frames_yields_until_timeout() -> None:
     frames = list(receive_frames(adapter))
 
     assert len(frames) == 1
-    assert frames[0].data == b"\xAA"
+    assert frames[0].data == b"\xaa"
 
 
 def test_slcan_backend_applies_bitrate_and_listen_only(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -177,8 +177,7 @@ def test_socketcan_refuses_when_listen_only_is_not_confirmed() -> None:
 
 
 CAN_LINK = (
-    '[{{"ifname":"can0","linkinfo":'
-    '{{"info_kind":"can","info_data":{{"ctrlmode":{modes}}}}}}}]'
+    '[{{"ifname":"can0","linkinfo":{{"info_kind":"can","info_data":{{"ctrlmode":{modes}}}}}}}]'
 )
 
 
@@ -335,6 +334,4 @@ def test_accepting_the_risk_never_relaxes_socketcan() -> None:
     adapter = PythonCanAdapter(lambda configuration: FakeBus([]), FakeControllerMode(False))
 
     with pytest.raises(ListenOnlyUnavailableError, match="not in listen-only"):
-        adapter.open(
-            CaptureConfiguration(channel="can0", allow_unverified_listen_only=True)
-        )
+        adapter.open(CaptureConfiguration(channel="can0", allow_unverified_listen_only=True))

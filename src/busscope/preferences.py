@@ -74,9 +74,7 @@ class DisplayPreferences:
             identifier_format=identifier_format,
             numeric_precision=numeric_precision,
             show_raw_payload=boolean_value("show_raw_payload", defaults.show_raw_payload),
-            show_decoded_values=boolean_value(
-                "show_decoded_values", defaults.show_decoded_values
-            ),
+            show_decoded_values=boolean_value("show_decoded_values", defaults.show_decoded_values),
             show_diagnostics=boolean_value("show_diagnostics", defaults.show_diagnostics),
             show_temporal_statistics=boolean_value(
                 "show_temporal_statistics", defaults.show_temporal_statistics

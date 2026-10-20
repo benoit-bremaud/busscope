@@ -257,9 +257,7 @@ class CaptureWindow(QMainWindow):
                 CaptureConfiguration(
                     channel=channel,
                     interface=self.selected_interface(),
-                    allow_unverified_listen_only=(
-                        self.unverified_silence_input.isChecked()
-                    ),
+                    allow_unverified_listen_only=(self.unverified_silence_input.isChecked()),
                 )
             )
         except Exception as error:
@@ -346,9 +344,7 @@ class CaptureWindow(QMainWindow):
         if self._capturing:
             self.status_label.setText("Error: stop live capture before loading a replay")
             return
-        path, _ = QFileDialog.getOpenFileName(
-            self, "Load CAN capture", "", "CSV files (*.csv)"
-        )
+        path, _ = QFileDialog.getOpenFileName(self, "Load CAN capture", "", "CSV files (*.csv)")
         if not path:
             return
         try:

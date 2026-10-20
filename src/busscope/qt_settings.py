@@ -31,9 +31,7 @@ class QtSettingsRepository:
                 "show_raw_payload": self._stored_boolean("show_raw_payload"),
                 "show_decoded_values": self._stored_boolean("show_decoded_values"),
                 "show_diagnostics": self._stored_boolean("show_diagnostics"),
-                "show_temporal_statistics": self._stored_boolean(
-                    "show_temporal_statistics"
-                ),
+                "show_temporal_statistics": self._stored_boolean("show_temporal_statistics"),
             }
         )
 
