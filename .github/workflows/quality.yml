@@ -39,6 +39,9 @@ jobs:
       - name: Run Ruff
         run: .venv-test/bin/ruff check .
 
+      - name: Check Ruff formatting
+        run: .venv-test/bin/ruff format --check .
+
       - name: Run Mypy
         run: .venv-test/bin/mypy
 
