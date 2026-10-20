@@ -83,6 +83,7 @@ class CsvCaptureLoader:
 
     @staticmethod
     def _parse_bool(value: str | None, field: str) -> bool:
+        """Accept only the exact 'true'/'false' tokens the exporter writes."""
         if value == "true":
             return True
         if value == "false":
@@ -94,6 +95,7 @@ class ReplayController:
     """Control deterministic local playback of captured records."""
 
     def __init__(self) -> None:
+        """Start empty and paused at the beginning of the timeline."""
         self._records: tuple[CapturedFrame, ...] = ()
         self._next_index = 0
         self._elapsed_seconds = 0.0

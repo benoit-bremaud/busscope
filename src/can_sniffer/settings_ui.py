@@ -22,6 +22,7 @@ class SettingsWidget(QWidget):
     def __init__(
         self, preferences: DisplayPreferences, repository: PreferencesRepository
     ) -> None:
+        """Build the controls from the given preferences without persisting them."""
         super().__init__()
         self._repository = repository
         self._updating = False
@@ -79,6 +80,7 @@ class SettingsWidget(QWidget):
         self.preferences_changed.emit(defaults)
 
     def _publish(self) -> None:
+        """Persist and emit the edited preferences, unless a programmatic update is running."""
         if self._updating:
             return
         preferences = DisplayPreferences(

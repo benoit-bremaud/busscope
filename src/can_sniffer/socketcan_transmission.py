@@ -32,6 +32,7 @@ class IpLinkCanInterfaceInspector:
     """Verify transmission safety from read-only Linux interface state."""
 
     def __init__(self, state_reader: InterfaceStateReader | None = None) -> None:
+        """Inject the interface state reader; the default shells out to 'ip -json'."""
         self._state_reader = state_reader or self._read_interface_state
 
     def ensure_ready(self, channel: str) -> None:
@@ -69,6 +70,7 @@ class IpLinkCanInterfaceInspector:
 
     @staticmethod
     def _read_interface_state(channel: str) -> str:
+        """Return 'ip -details -json link show' output, failing closed when unavailable."""
         executable = shutil.which("ip")
         if executable is None:
             raise RuntimeError("ip command is required to verify CAN safety")
@@ -98,6 +100,7 @@ class SocketCanTransmitter:
         readiness: CanInterfaceReadinessPort,
         bus_factory: BusFactory | None = None,
     ) -> None:
+        """Inject the readiness check and bus factory; the default opens a real socket."""
         self._readiness = readiness
         self._bus_factory = bus_factory or self._create_bus
 
@@ -121,6 +124,7 @@ class SocketCanTransmitter:
 
     @staticmethod
     def _create_bus(channel: str) -> TransmissionBus:
+        """Open a Classical CAN socket that does not loop back its own frames."""
         return can.Bus(
             interface="socketcan",
             channel=channel,

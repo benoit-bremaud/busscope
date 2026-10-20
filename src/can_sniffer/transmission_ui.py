@@ -18,6 +18,7 @@ class TransmissionWidget(QWidget):
     """Validate, confirm, and submit one manual transmission request."""
 
     def __init__(self, transmitter: CanTransmissionPort) -> None:
+        """Build the form; sending stays disabled until the operator enables it."""
         super().__init__()
         self._transmitter = transmitter
 
@@ -83,6 +84,7 @@ class TransmissionWidget(QWidget):
         self.status_label.setText("One CAN transmission attempt completed")
 
     def _set_enabled(self, enabled: bool) -> None:
+        """Toggle the send button and tell the operator the current state."""
         self.send_button.setEnabled(enabled)
         self.status_label.setText(
             "Manual transmission enabled"
@@ -92,6 +94,7 @@ class TransmissionWidget(QWidget):
 
     @staticmethod
     def _confirmation_text(request: ManualTransmission) -> str:
+        """Describe exactly the one frame the operator is about to confirm."""
         return (
             f"Channel: {request.channel}\n"
             f"Extended identifier: {request.identifier_hex}\n"

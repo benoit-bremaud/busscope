@@ -41,3 +41,6 @@ jobs:
 
       - name: Run Mypy
         run: .venv-test/bin/mypy
+
+      - name: Run Interrogate
+        run: .venv-test/bin/interrogate src

@@ -15,6 +15,7 @@ class QtSettingsRepository:
     _PREFIX = "display/"
 
     def __init__(self, settings: QSettings) -> None:
+        """Keep the injected QSettings so tests can use an isolated store."""
         self._settings = settings
 
     def load(self) -> DisplayPreferences:
@@ -37,9 +38,11 @@ class QtSettingsRepository:
         )
 
     def _read(self, key: str) -> object:
+        """Read one raw value under the display prefix; None when absent."""
         return self._settings.value(f"{self._PREFIX}{key}")
 
     def _stored_integer(self, key: str) -> object:
+        """Coerce INI string storage back to int; leave anything else for domain validation."""
         value = self._read(key)
         if isinstance(value, str):
             try:
@@ -49,6 +52,7 @@ class QtSettingsRepository:
         return value
 
     def _stored_boolean(self, key: str) -> object:
+        """Coerce INI 'true'/'false' strings back to bool; leave anything else for validation."""
         value = self._read(key)
         if isinstance(value, str) and value.lower() in {"true", "false"}:
             return value.lower() == "true"
