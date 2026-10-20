@@ -1,7 +1,7 @@
 from pathlib import Path
 
 import pytest
-from PySide6.QtCore import QCoreApplication, QSettings
+from PySide6.QtCore import QCoreApplication, QSettings, Qt
 from PySide6.QtWidgets import QApplication
 
 from busscope.analysis import CapturedFrame, IdentifierStatistics, TemporalAnalyzer
@@ -907,3 +907,71 @@ def test_replay_finish_returns_to_loaded(
 
     assert window.status_pill.text() == "Loaded"
     assert window.primary_action.text() == "Play replay"
+
+
+def test_space_is_handed_back_to_a_focused_button(
+    qt_application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    del qt_application
+    window = create_test_window(FakeController([]))
+    button = window.replay_mode_button
+    monkeypatch.setattr("busscope.ui.QApplication.focusWidget", lambda: button)
+
+    window.primary_shortcut.trigger()
+
+    assert button.isChecked() is True
+    assert window.status_pill.text() == "No capture"
+
+
+def test_space_opens_a_focused_combo_box(
+    qt_application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    del qt_application
+    window = create_test_window(FakeController([]))
+    combo = window.interface_input
+    opened: list[bool] = []
+    monkeypatch.setattr(combo, "showPopup", lambda: opened.append(True))
+    monkeypatch.setattr("busscope.ui.QApplication.focusWidget", lambda: combo)
+
+    window.primary_shortcut.trigger()
+
+    assert opened == [True]
+    assert window.status_pill.text() == "Idle"
+
+
+def test_space_without_focused_control_starts_capture(
+    qt_application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    del qt_application
+    window = create_test_window(FakeController([]))
+    monkeypatch.setattr("busscope.ui.QApplication.focusWidget", lambda: None)
+
+    window.primary_shortcut.trigger()
+
+    assert window.status_pill.text() == "Listening"
+
+
+def test_shortcuts_are_scoped_to_the_capture_tab(qt_application: QApplication) -> None:
+    del qt_application
+    window = create_test_window(FakeController([]))
+
+    for action in (window.primary_shortcut, window.switch_mode_action):
+        assert action.shortcutContext() is Qt.ShortcutContext.WidgetWithChildrenShortcut
+    assert window.switch_mode_action.shortcut().toString() == "Ctrl+M"
+
+
+def test_poll_error_clears_display_freeze(qt_application: QApplication) -> None:
+    del qt_application
+
+    class FailingController(FakeController):
+        def poll(self, timeout: float | None = None) -> DecodeResult | None:
+            raise OSError("bus down")
+
+    window = create_test_window(FailingController([]))
+    window.start_capture()
+    window.toggle_display_pause()
+
+    window._poll_capture()
+
+    assert window.freeze_action.isChecked() is False
+    assert window.status_pill.text() == "Idle"

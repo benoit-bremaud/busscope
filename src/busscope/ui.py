@@ -8,6 +8,8 @@ from typing import Protocol
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QAction, QKeySequence, QPalette
 from PySide6.QtWidgets import (
+    QAbstractButton,
+    QApplication,
     QButtonGroup,
     QCheckBox,
     QComboBox,
@@ -129,7 +131,8 @@ class CaptureWindow(QMainWindow):
         self._mode = ToolbarMode.LIVE
         self._replay_active = False
         self.primary_action = QAction(self)
-        self.primary_action.setShortcut(QKeySequence(Qt.Key.Key_Space))
+        self.primary_shortcut = QAction(self)
+        self.primary_shortcut.setShortcut(QKeySequence(Qt.Key.Key_Space))
         self.freeze_action = self._create_action("snowflake", "Freeze display")
         self.freeze_action.setCheckable(True)
         self.clear_action = self._create_action("trash-2", "Clear frames", "Ctrl+L")
@@ -147,11 +150,10 @@ class CaptureWindow(QMainWindow):
             button.setCheckable(True)
             self._mode_group.addButton(button)
         self.live_mode_button.setChecked(True)
-        self.live_mode_button.setToolTip("Live capture (Ctrl+Tab to switch)")
-        self.replay_mode_button.setToolTip("CSV replay (Ctrl+Tab to switch)")
+        self.live_mode_button.setToolTip("Live capture (Ctrl+M to switch)")
+        self.replay_mode_button.setToolTip("CSV replay (Ctrl+M to switch)")
         self.switch_mode_action = QAction(self)
-        self.switch_mode_action.setShortcut(QKeySequence("Ctrl+Tab"))
-        self.addAction(self.switch_mode_action)
+        self.switch_mode_action.setShortcut(QKeySequence("Ctrl+M"))
         self.status_pill = QLabel()
         self.status_pill.setObjectName("statusPill")
         self.status_pill.setStyleSheet(
@@ -220,6 +222,10 @@ class CaptureWindow(QMainWindow):
         layout = QVBoxLayout(capture_widget)
         layout.addLayout(controls)
         layout.addWidget(self.toolbar)
+        # Space and Ctrl+M belong to the capture tab only, not to Settings or Transmission.
+        for action in (self.primary_shortcut, self.switch_mode_action):
+            action.setShortcutContext(Qt.ShortcutContext.WidgetWithChildrenShortcut)
+            capture_widget.addAction(action)
         layout.addWidget(self.status_label)
         self.statistics_label = QLabel("Statistics:")
         layout.addWidget(self.statistics_label)
@@ -234,6 +240,7 @@ class CaptureWindow(QMainWindow):
         self.resize(720, 480)
 
         self.primary_action.triggered.connect(self.trigger_primary)
+        self.primary_shortcut.triggered.connect(self._on_space)
         self.freeze_action.triggered.connect(self.toggle_display_pause)
         self.clear_action.triggered.connect(self.clear_history)
         self.export_action.triggered.connect(self.export_csv)
@@ -324,7 +331,7 @@ class CaptureWindow(QMainWindow):
         self.set_mode(other)
 
     def trigger_primary(self) -> None:
-        """Run the primary toggle of the current state (Space)."""
+        """Run the primary toggle of the current state."""
         dispatch = {
             PrimaryIntent.RECORD: self.start_capture,
             PrimaryIntent.STOP: self.stop_capture,
@@ -332,6 +339,21 @@ class CaptureWindow(QMainWindow):
             PrimaryIntent.PAUSE: self.pause_replay,
         }
         dispatch[primary_intent(self._toolbar_state())]()
+
+    def _on_space(self) -> None:
+        """Trigger the primary toggle, unless a focused control owns Space.
+
+        The shortcut would otherwise steal Space from the focused button or combo box
+        and break keyboard navigation.
+        """
+        focused = QApplication.focusWidget()
+        if isinstance(focused, QAbstractButton):
+            focused.click()
+            return
+        if isinstance(focused, QComboBox):
+            focused.showPopup()
+            return
+        self.primary_action.trigger()
 
     def apply_preferences(self, preferences: DisplayPreferences) -> None:
         """Apply display preferences immediately without changing retained data or state."""
@@ -620,6 +642,8 @@ class CaptureWindow(QMainWindow):
                 self._timer.stop()
                 self._stop_after_poll_error()
                 self._capturing = False
+                self._display_paused = False
+                self._display_pause_index = None
                 self._sync_toolbar()
                 self.status_label.setText(f"Error: {error}")
                 return
