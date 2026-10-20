@@ -27,7 +27,8 @@ the primary tool.
 | 7 | Cost | 5 | 5 | 1 | 5 | 5 | 5 |
 | | **Total / 500** | **100** | **455** | 200 | 310 | 355 | 185 |
 
-Halving criterion 2 keeps ngspice first (405 against 335).
+Halving criterion 2 (its 10 points moved to native Linux) keeps ngspice first: 455 against 385
+for Qucs-S.
 
 ## Decision
 

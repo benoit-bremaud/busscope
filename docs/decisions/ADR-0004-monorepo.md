@@ -20,7 +20,7 @@ application. The owner's comparable hardware projects are single repositories.
 | 6 | Independent releases | 10 | 3 (tag lanes) | 5 | 5 |
 | | **Total / 500** | **100** | **420** | 365 | 290 |
 
-Doubling the CI weight keeps A first (465 against 440).
+Doubling the CI weight (taken from simplicity) keeps A first: 405 against 395.
 
 ## Decision
 

@@ -30,7 +30,9 @@ isolation and no protection.
   header** (ADR-0002), which carries each receiver line and the CP comparator output. The
   analyser never touches a charger bus directly.
 - **Later: a Digilent Analog Discovery 3**, bought when analogue views become necessary.
-  Fallback: the Saleae Logic Pro 8 if more robust inputs matter more than price.
+  Fallback: the Saleae Logic Pro 8 if more robust inputs matter more than price. The scope
+  column scores higher (360) but rests on estimates, so the Saleae stays the fallback until a
+  specific scope is scored.
 
 ## Consequences
 

@@ -29,13 +29,16 @@ TypeScript; PySide6 alone weighs 650 MB in the current virtual environment, whil
 | 7 | Simplicity | 10 | 5 | 4 | 2 (two languages) | 4 | 3 | 1 (three languages) |
 | | **Total / 500** | **100** | 360 | 365 | **455** | 365 | 405 | 405 |
 
-Doubling simplicity (taken from consistency) keeps Electron first: 425 against 400 for PySide6.
+Doubling simplicity (taken from consistency) keeps Electron first: 425 against 405 for the local
+web app (PySide6 400).
 
 ## Decision
 
 **Electron + React + TypeScript for the UI, the existing Python core kept as a local service.**
 Electron's main process starts the core as a child process; the renderer talks to it through a
-minimal preload API; the core alone opens hardware and enforces listen-only. Commands use
+minimal preload API; the core alone opens hardware and enforces listen-only. The guarded single-frame transmission of
+2026-09-04 is not exposed in the new UI until a dedicated ADR ports it; on the box it stays
+impossible while transmit paths are disabled in hardware. Commands use
 JSON-RPC; frames are streamed in batches (about every 50 ms), never one message per frame.
 
 **Fallback: the local web app** — same core, same React, without Electron — reachable without
@@ -44,8 +47,8 @@ rewriting the UI.
 ## Consequences
 
 - **Gate:** a throwaway spike must show the core-to-UI link sustaining about 50 000 frames/s into
-  a virtualised table before detailed design. If it fails, this ADR is reopened; PySide6 then
-  regains the lead.
+  a virtualised table before detailed design. If it fails, this ADR is reopened and the local web app
+  fallback is evaluated first.
 - PySide6 leaves the core's dependencies once the Electron UI reaches parity.
 - The core-to-UI protocol is a second contract next to the box's USB protocol; both are specified
   and versioned.
