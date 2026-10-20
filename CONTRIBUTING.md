@@ -42,6 +42,17 @@ Use the isolated test environment and run:
 .venv-test/bin/mypy
 ```
 
+Before a pull request, also run the local SonarQube analysis. It needs the shared server at
+`http://localhost:9000` and the global analysis token exported as `SONAR_TOKEN`; the project
+settings live in `sonar-project.properties`:
+
+```bash
+.venv-test/bin/pytest --cov-report=xml:coverage.xml
+sonar-scanner -Dsonar.qualitygate.wait=true
+```
+
+The scan must end with `QUALITY GATE STATUS: PASSED`.
+
 New features must maintain at least 90% total coverage and include happy-path, sad-path, and
 edge-case tests. Never commit credentials, `.env` files, real captures, or charger-identifying
 data.
