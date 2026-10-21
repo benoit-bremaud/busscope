@@ -211,8 +211,8 @@ class PythonCanAdapter:
             f"refusing to capture on {configuration.channel!r}: the slcan backend requests "
             f"listen-only but the adapter acknowledges no command, so silence cannot be "
             f"confirmed. On an isolated bench only, tick 'Accept unverified silence' "
-            f"(allow_unverified_listen_only); on a live bus, use a native CAN interface "
-            f"instead (slcand -l, or candleLight firmware)"
+            f"(allow_unverified_listen_only); on a live bus, use a verified native CAN "
+            f"interface instead (e.g. candleLight firmware)"
         )
 
     def receive(self, timeout: float | None = None) -> CanFrame | None:
