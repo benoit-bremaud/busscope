@@ -348,7 +348,10 @@ class CaptureWindow(QMainWindow):
         self.live_settings.setVisible(
             live and bool({Feature.CAN_BACKEND, Feature.CAN_CHANNEL} & features)
         )
-        self.protocol_selector.setEnabled(not self._capturing and not self._replay.is_playing)
+        # Same rule as the source switch (#69): locked while a source feeds the view.
+        self.protocol_selector.setEnabled(
+            self._mode is None or can_switch_mode(self._toolbar_state(self._mode))
+        )
         self.toolbar.setVisible(self._mode is not None)
         if self._mode is None:
             self.status_pill.setText("Choose source" if sources else "Choose protocol")

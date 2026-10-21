@@ -119,10 +119,7 @@ class ProtocolCatalogue:
         protocol = self.get(key)
         if protocol.availability is not Availability.AVAILABLE:
             return frozenset()
-        resolved: frozenset[Feature] = frozenset()
-        for node in self.path(key):
-            resolved = (resolved | node.adds) - node.removes
-        return resolved
+        return _fold(self.path(key))
 
     def search(self, text: str) -> tuple[Protocol, ...]:
         """Return protocols matching ``text``; an empty query returns all of them."""
@@ -138,16 +135,22 @@ def _index(node: Node, parents: tuple[Node, ...], paths: dict[str, tuple[Node, .
         raise CatalogueError(f"duplicate key: {node.key}")
     path = (*parents, node)
     paths[node.key] = path
-    inherited: frozenset[Feature] = frozenset()
-    for ancestor in parents:
-        inherited = (inherited | ancestor.adds) - ancestor.removes
-    if not node.removes <= inherited:
+    inherited = _fold(parents)
+    if node.removes - inherited:
         raise CatalogueError(f"{node.key} removes a feature it does not inherit")
     if isinstance(node, Group):
         if not node.children:
             raise CatalogueError(f"empty group: {node.key}")
         for child in node.children:
             _index(child, path, paths)
+
+
+def _fold(nodes: tuple[Node, ...]) -> frozenset[Feature]:
+    """Apply each node's additions then removals, from the root downwards."""
+    resolved: frozenset[Feature] = frozenset()
+    for node in nodes:
+        resolved = (resolved | node.adds) - node.removes
+    return resolved
 
 
 def _check_carrier_chain(protocol: Protocol, by_key: dict[str, Protocol]) -> None:
