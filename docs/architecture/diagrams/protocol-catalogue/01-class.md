@@ -1,5 +1,7 @@
 # Protocol catalogue — class diagram
 
+> Superseded by the recursive model of [`minimal-ui/01-class.md`](../minimal-ui/01-class.md) (#77).
+
 Qt-free registry (`src/busscope/protocol_catalogue.py`), immutable data, reusable by the future
 React UI (ADR-0006) through a plain dict/JSON export.
 
