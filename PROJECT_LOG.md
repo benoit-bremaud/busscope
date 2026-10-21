@@ -129,3 +129,14 @@ ordinary commits from that PR's branch.
 - **PR #70 merged** (`0f61770`) — `feat(ui): context-aware icon toolbar for capture and replay`
   (`feat/69-icon-toolbar`, closes #69). Lucide SVG icons, Qt-free toolbar rules
   (`toolbar.py`), Ctrl+M mode switch; Codex P2 findings fixed in `4465b93`. Follow-ups in #71.
+
+## 2026-10-21
+
+- **PR #76 merged** (`ceb6b9e`) — `feat(ui): protocol catalogue and compact protocol picker`
+  (`feat/72-protocol-catalogue`, closes #72). Qt-free `protocol_catalogue.py` (families →
+  sub-families → protocols, `carried_by` stacking with invariant checks, JSON export for the
+  React UI); `protocol_selector.py` is a compact "Protocol: X ▾" button opening a searchable popup
+  tree. CAN 2.0B and Infypower available, the rest planned. UI benchmark and UML under
+  `docs/architecture/`. Codex P2 (Infypower must be available) fixed in `7d8e099`. Follow-ups:
+  #73 (non-CAN transport settings), #74 (decoders), #75 (protocol hierarchy statistics), #77
+  (minimalist contextual UI).
