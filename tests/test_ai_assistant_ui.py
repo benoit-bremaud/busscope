@@ -118,7 +118,10 @@ def test_cloud_provider_without_key_shows_only_guided_setup(
     assert widget.model_input.text() == "claude-opus-5-5"
     assert not widget.key_setup.isHidden()
     assert widget.endpoint_row.isHidden()
-    assert "console.anthropic.com" in widget.key_link.text()
+    url = "https://console.anthropic.com/settings/keys"
+    assert widget.key_link.text() == (
+        f'Create a key at <a href="{url}">{url}</a> — Starts with sk-ant-'
+    )
     assert widget.test_button.isHidden()
     assert widget.diagnosis.isHidden()
     assert widget.forget_key_button.isHidden()
