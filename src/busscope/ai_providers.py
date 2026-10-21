@@ -12,11 +12,12 @@ import urllib.request
 from collections.abc import Callable, Mapping
 from typing import Protocol
 
-from busscope.ai_assistant import LlmProvider, ProviderError
+from busscope.ai_assistant import LlmProvider, ProviderError, endpoint_is_local
 
 _TIMEOUT_SECONDS = 60.0
 _MAX_TOKENS = 4096
 _ANTHROPIC_VERSION = "2023-06-01"
+_UNEXPECTED_REPLY = "Unexpected reply format from the provider"
 
 
 class _Response(Protocol):
@@ -45,8 +46,9 @@ def _post_json(
     opener: Opener, url: str, headers: Mapping[str, str], body: object, timeout: float
 ) -> object:
     """POST a JSON body and return the decoded JSON reply, or raise a key-free error."""
-    if not url.startswith(("https://", "http://")):
-        raise ProviderError("Endpoint must be an http(s) URL")
+    # Cleartext HTTP only to this PC (local models); anything that leaves it must use TLS.
+    if not (url.startswith("https://") or (url.startswith("http:") and endpoint_is_local(url))):
+        raise ProviderError("Endpoint must use https unless it is on this PC")
     request = urllib.request.Request(  # noqa: S310 - scheme checked above
         url,
         data=json.dumps(body).encode(),
@@ -90,9 +92,9 @@ def _dig(payload: object, *path: str | int) -> str:
         elif isinstance(step, str) and isinstance(node, dict) and step in node:
             node = node[step]
         else:
-            raise ProviderError("Unexpected reply format from the provider")
+            raise ProviderError(_UNEXPECTED_REPLY)
     if not isinstance(node, str):
-        raise ProviderError("Unexpected reply format from the provider")
+        raise ProviderError(_UNEXPECTED_REPLY)
     return node
 
 
@@ -120,7 +122,7 @@ class AnthropicProvider:
         )
         blocks = reply.get("content") if isinstance(reply, dict) else None
         if not isinstance(blocks, list):
-            raise ProviderError("Unexpected reply format from the provider")
+            raise ProviderError(_UNEXPECTED_REPLY)
         texts = [
             block["text"]
             for block in blocks

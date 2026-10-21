@@ -270,7 +270,7 @@ def test_remote_local_endpoint_is_treated_as_leaving_the_pc(
     harness.frames.append(frame())
     widget = harness.widget()
     select(widget, "local")
-    widget.endpoint_input.setText("http://10.0.0.5:11434/v1")
+    widget.endpoint_input.setText("https://10.0.0.5:11434/v1")
     widget.question_input.setPlainText("why?")
     widget.prepare()
     assert widget.destination_label.text().startswith("Warning:")

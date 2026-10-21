@@ -145,10 +145,11 @@ def test_invalid_json_reply() -> None:
         AnthropicProvider("https://a", RecordingOpener(b"not json")).complete("s", "p", "m", "k")
 
 
-def test_non_http_endpoint_is_refused_before_any_request() -> None:
+@pytest.mark.parametrize("endpoint", ["file:///etc", "http://192.168.1.5:11434/v1", "ftp://x"])
+def test_unsafe_endpoint_is_refused_before_any_request(endpoint: str) -> None:
     opener = RecordingOpener({})
-    with pytest.raises(ProviderError, match="http"):
-        OpenAiCompatibleProvider("file:///etc", opener).complete("s", "p", "m", None)
+    with pytest.raises(ProviderError, match="https"):
+        OpenAiCompatibleProvider(endpoint, opener).complete("s", "p", "m", None)
     assert opener.requests == []
 
 

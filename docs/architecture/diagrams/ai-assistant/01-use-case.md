@@ -30,6 +30,8 @@ flowchart LR
     uc4 --- llm
 ```
 
+- Transport: TLS (https) is mandatory for every endpoint except loopback; cleartext http
+  is accepted only to this PC.
 - **Choose an AI provider and model**: flat dropdown of Anthropic, OpenAI, Mistral, Google and
   Local (Ollama / OpenAI-compatible). Default model per provider (Anthropic: latest Claude).
   Provider, model and endpoint (non-secret) persist in QSettings; the key never does.
