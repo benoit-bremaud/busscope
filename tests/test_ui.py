@@ -584,6 +584,10 @@ def test_application_composition_builds_capture_window(
 
     assert application is qt_application
     assert isinstance(window, CaptureWindow)
+    assert window.tabs.tabText(3) == "AI assistant"
+    window.tabs.setCurrentIndex(3)  # opening the tab re-checks readiness
+    window.tabs.setCurrentIndex(0)
+    assert window.captured_frames() == ()
     assert QCoreApplication.organizationName() == "benoit-bremaud"
     assert QCoreApplication.applicationName() == "busscope"
 

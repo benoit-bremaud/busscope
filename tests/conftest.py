@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+import keyring
+import pytest
+from keyring.backends.fail import Keyring as FailKeyring
+
 
 class FakeControllerMode:
     """Stands in for the `ip link` reader, which the suite must never actually run.
@@ -17,3 +21,9 @@ class FakeControllerMode:
     def is_listen_only(self, channel: str) -> bool | None:
         self.channels.append(channel)
         return self.answer
+
+
+@pytest.fixture(autouse=True)
+def _no_real_keyring() -> None:
+    """The suite must never read or write the developer's real OS keyring."""
+    keyring.set_keyring(FailKeyring())  # type: ignore[no-untyped-call]  # unannotated

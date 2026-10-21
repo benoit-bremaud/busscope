@@ -1,0 +1,194 @@
+"""HTTP adapters for the AI providers, using only the standard library (issue #83).
+
+No vendor SDK: each adapter is one JSON POST. Error messages are built from the HTTP
+status and the provider's error text, never from the request, so the key cannot leak.
+"""
+
+from __future__ import annotations
+
+import json
+import urllib.error
+import urllib.request
+from collections.abc import Callable, Mapping
+from typing import Protocol
+
+from busscope.ai_assistant import LlmProvider, ProviderError
+
+_TIMEOUT_SECONDS = 60.0
+_MAX_TOKENS = 4096
+_ANTHROPIC_VERSION = "2023-06-01"
+
+
+class _Response(Protocol):
+    """The slice of an HTTP response the adapters use."""
+
+    def read(self) -> bytes:
+        """Response body."""
+
+    def __enter__(self) -> _Response:
+        """Context manager entry."""
+
+    def __exit__(self, *args: object) -> None:
+        """Context manager exit."""
+
+
+Opener = Callable[[urllib.request.Request, float], _Response]
+
+
+def _default_opener(request: urllib.request.Request, timeout: float) -> _Response:
+    """Production opener: urllib with an explicit timeout."""
+    response: _Response = urllib.request.urlopen(request, timeout=timeout)  # noqa: S310
+    return response
+
+
+def _post_json(
+    opener: Opener, url: str, headers: Mapping[str, str], body: object, timeout: float
+) -> object:
+    """POST a JSON body and return the decoded JSON reply, or raise a key-free error."""
+    if not url.startswith(("https://", "http://")):
+        raise ProviderError("Endpoint must be an http(s) URL")
+    request = urllib.request.Request(  # noqa: S310 - scheme checked above
+        url,
+        data=json.dumps(body).encode(),
+        headers={"content-type": "application/json", **headers},
+        method="POST",
+    )
+    try:
+        with opener(request, timeout) as response:
+            return json.loads(response.read())
+    except urllib.error.HTTPError as error:
+        raise ProviderError(f"HTTP {error.code}: {_error_text(error)}") from None
+    except urllib.error.URLError as error:
+        raise ProviderError(f"Cannot reach the provider: {error.reason}") from None
+    except TimeoutError:
+        raise ProviderError("The provider did not answer in time") from None
+    except json.JSONDecodeError:
+        raise ProviderError("The provider sent an invalid reply") from None
+
+
+def _error_text(error: urllib.error.HTTPError) -> str:
+    """Best-effort provider message; vendors put it under error.message."""
+    try:
+        payload = json.loads(error.read())
+    except (OSError, ValueError):
+        return error.reason or "request failed"
+    if isinstance(payload, dict):
+        inner = payload.get("error")
+        if isinstance(inner, dict) and isinstance(inner.get("message"), str):
+            return str(inner["message"])
+        if isinstance(inner, str):
+            return inner
+    return error.reason or "request failed"
+
+
+def _dig(payload: object, *path: str | int) -> str:
+    """Walk a JSON path and return the text found there, or raise ProviderError."""
+    node = payload
+    for step in path:
+        if isinstance(step, int) and isinstance(node, list) and len(node) > step:
+            node = node[step]
+        elif isinstance(step, str) and isinstance(node, dict) and step in node:
+            node = node[step]
+        else:
+            raise ProviderError("Unexpected reply format from the provider")
+    if not isinstance(node, str):
+        raise ProviderError("Unexpected reply format from the provider")
+    return node
+
+
+class AnthropicProvider:
+    """Claude Messages API."""
+
+    def __init__(self, base_url: str, opener: Opener = _default_opener) -> None:
+        """Bind the API root and the injectable HTTP opener."""
+        self._base_url = base_url.rstrip("/")
+        self._opener = opener
+
+    def complete(self, system: str, prompt: str, model: str, key: str | None) -> str:
+        """Return the concatenated text blocks of the answer."""
+        reply = _post_json(
+            self._opener,
+            f"{self._base_url}/v1/messages",
+            {"x-api-key": key or "", "anthropic-version": _ANTHROPIC_VERSION},
+            {
+                "model": model,
+                "max_tokens": _MAX_TOKENS,
+                "system": system,
+                "messages": [{"role": "user", "content": prompt}],
+            },
+            _TIMEOUT_SECONDS,
+        )
+        blocks = reply.get("content") if isinstance(reply, dict) else None
+        if not isinstance(blocks, list):
+            raise ProviderError("Unexpected reply format from the provider")
+        texts = [
+            block["text"]
+            for block in blocks
+            if isinstance(block, dict)
+            and block.get("type") == "text"
+            and isinstance(block.get("text"), str)
+        ]
+        if not texts:
+            raise ProviderError("The provider returned no text answer")
+        return "".join(texts)
+
+
+class OpenAiCompatibleProvider:
+    """Chat Completions wire format: OpenAI, Mistral and local Ollama ``/v1``."""
+
+    def __init__(self, base_url: str, opener: Opener = _default_opener) -> None:
+        """Bind the API root (ending in /v1) and the injectable HTTP opener."""
+        self._base_url = base_url.rstrip("/")
+        self._opener = opener
+
+    def complete(self, system: str, prompt: str, model: str, key: str | None) -> str:
+        """Return the first choice's message content."""
+        headers = {"authorization": f"Bearer {key}"} if key else {}
+        reply = _post_json(
+            self._opener,
+            f"{self._base_url}/chat/completions",
+            headers,
+            {
+                "model": model,
+                "messages": [
+                    {"role": "system", "content": system},
+                    {"role": "user", "content": prompt},
+                ],
+            },
+            _TIMEOUT_SECONDS,
+        )
+        return _dig(reply, "choices", 0, "message", "content")
+
+
+class GoogleProvider:
+    """Gemini generateContent API."""
+
+    def __init__(self, base_url: str, opener: Opener = _default_opener) -> None:
+        """Bind the API root and the injectable HTTP opener."""
+        self._base_url = base_url.rstrip("/")
+        self._opener = opener
+
+    def complete(self, system: str, prompt: str, model: str, key: str | None) -> str:
+        """Return the first candidate's first text part."""
+        reply = _post_json(
+            self._opener,
+            f"{self._base_url}/models/{model}:generateContent",
+            {"x-goog-api-key": key or ""},
+            {
+                "system_instruction": {"parts": [{"text": system}]},
+                "contents": [{"role": "user", "parts": [{"text": prompt}]}],
+            },
+            _TIMEOUT_SECONDS,
+        )
+        return _dig(reply, "candidates", 0, "content", "parts", 0, "text")
+
+
+def build_provider(
+    provider_id: str, endpoint: str, opener: Opener = _default_opener
+) -> LlmProvider:
+    """Return the adapter for a provider id at the given endpoint."""
+    if provider_id == "anthropic":
+        return AnthropicProvider(endpoint, opener)
+    if provider_id == "google":
+        return GoogleProvider(endpoint, opener)
+    return OpenAiCompatibleProvider(endpoint, opener)

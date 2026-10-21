@@ -140,3 +140,13 @@ ordinary commits from that PR's branch.
   `docs/architecture/`. Codex P2 (Infypower must be available) fixed in `7d8e099`. Follow-ups:
   #73 (non-CAN transport settings), #74 (decoders), #75 (protocol hierarchy statistics), #77
   (minimalist contextual UI).
+- **PR #79 merged** (`effb5c8`) — `feat(ui): minimalist contextual UI on an inheritable domain tree`
+  (`feat/77-minimal-contextual-ui`, closes #77). The protocol catalogue became a recursive tree
+  whose nodes inherit Feature sets; the capture tab now uses progressive disclosure (protocol
+  first, then source, then only the controls the resolved features grant), with the listen-only
+  badge always visible. Gotcha: a CAN protocol filed outside fieldbus/can (e.g. CHAdeMO under EV
+  charging) must grant the CAN features itself (`cbc1311`).
+- **PR #85 merged** (`5d98f39`) — `fix(ui): wrap status messages and name the slcan acceptance
+  checkbox` (`fix/84-wrap-status-message`, closes #84). Long status messages wrap instead of
+  widening the window. Codex P1 fixed in `e2319a0`: never recommend `slcand -l` for a live bus —
+  only verified native SocketCAN interfaces are suggested for live capture.

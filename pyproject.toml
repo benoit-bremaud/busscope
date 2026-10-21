@@ -13,6 +13,8 @@ dependencies = [
     # own that range avoids drifting from what it actually supports.
     "python-can[serial]>=4.5,<5",
     "PySide6>=6.8,<7",
+    # OS keyring (Secret Service on Linux): the only place AI provider keys are stored.
+    "keyring>=25,<26",
 ]
 
 [project.scripts]

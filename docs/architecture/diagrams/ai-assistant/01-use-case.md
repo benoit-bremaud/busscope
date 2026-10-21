@@ -44,6 +44,6 @@ flowchart LR
 - **Review and redact data before sending**: the exact payload is previewed and **every send
   is confirmed**, local included. Redaction is on by default: module addresses are
   pseudonymised consistently within a request (same address → same `M1`, `M2`…), timestamps
-  become relative, payloads of identity frames (serial numbers) are masked. A "Local"
+  become relative, payloads busscope cannot decode (which may carry serial numbers) are masked. A "Local"
   endpoint that is not a loopback address is treated as cloud (warning shown).
 - Out of scope: the AI never transmits on a bus (no tool access, text answers only).

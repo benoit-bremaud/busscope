@@ -1,0 +1,225 @@
+from __future__ import annotations
+
+import io
+import json
+import urllib.error
+import urllib.request
+from email.message import Message
+
+import keyring
+import pytest
+from keyring.backend import KeyringBackend
+from keyring.errors import PasswordDeleteError
+
+from busscope.ai_assistant import ProviderError
+from busscope.ai_keystore import KeyringKeyStore
+from busscope.ai_providers import (
+    AnthropicProvider,
+    GoogleProvider,
+    OpenAiCompatibleProvider,
+    _default_opener,
+    build_provider,
+)
+
+SECRET = "sk-ant-THIS-MUST-NEVER-LEAK-0123456789"  # noqa: S105 - fake key, leak sentinel
+
+
+class FakeResponse:
+    def __init__(self, body: bytes) -> None:
+        self.body = body
+
+    def read(self) -> bytes:
+        return self.body
+
+    def __enter__(self) -> FakeResponse:
+        return self
+
+    def __exit__(self, *args: object) -> None:
+        return None
+
+
+class RecordingOpener:
+    def __init__(self, reply: object = None, error: BaseException | None = None) -> None:
+        self.reply = reply
+        self.error = error
+        self.requests: list[urllib.request.Request] = []
+        self.timeouts: list[float] = []
+
+    def __call__(self, request: urllib.request.Request, timeout: float) -> FakeResponse:
+        self.requests.append(request)
+        self.timeouts.append(timeout)
+        if self.error is not None:
+            raise self.error
+        raw = self.reply if isinstance(self.reply, bytes) else json.dumps(self.reply).encode()
+        return FakeResponse(raw)
+
+    def body(self) -> dict[str, object]:
+        data = self.requests[0].data
+        assert isinstance(data, bytes)
+        loaded = json.loads(data)
+        assert isinstance(loaded, dict)
+        return loaded
+
+
+def http_error(code: int, body: bytes) -> urllib.error.HTTPError:
+    return urllib.error.HTTPError("https://x", code, "Reason", Message(), io.BytesIO(body))
+
+
+def test_anthropic_request_shape_and_answer() -> None:
+    opener = RecordingOpener({"content": [{"type": "thinking"}, {"type": "text", "text": "A"}]})
+    answer = AnthropicProvider("https://api.anthropic.com/", opener).complete(
+        "sys", "prompt", "claude-opus-5-5", SECRET
+    )
+    request = opener.requests[0]
+    assert answer == "A"
+    assert request.full_url == "https://api.anthropic.com/v1/messages"
+    assert request.get_header("X-api-key") == SECRET
+    assert request.get_header("Anthropic-version") == "2023-06-01"
+    assert opener.body()["system"] == "sys"
+    assert opener.timeouts == [60.0]
+
+
+@pytest.mark.parametrize("reply", [{"content": []}, {"content": "x"}, ["x"]])
+def test_anthropic_without_text_is_an_error(reply: object) -> None:
+    with pytest.raises(ProviderError):
+        AnthropicProvider("https://a", RecordingOpener(reply)).complete("s", "p", "m", SECRET)
+
+
+def test_openai_compatible_request_shape_with_and_without_key() -> None:
+    reply = {"choices": [{"message": {"content": "B"}}]}
+    opener = RecordingOpener(reply)
+    assert (
+        OpenAiCompatibleProvider("https://api.openai.com/v1", opener).complete(
+            "sys", "p", "gpt", "sk-x"
+        )
+        == "B"
+    )
+    assert opener.requests[0].full_url == "https://api.openai.com/v1/chat/completions"
+    assert opener.requests[0].get_header("Authorization") == "Bearer sk-x"
+    assert opener.body()["messages"] == [
+        {"role": "system", "content": "sys"},
+        {"role": "user", "content": "p"},
+    ]
+    local = RecordingOpener(reply)
+    OpenAiCompatibleProvider("http://localhost:11434/v1", local).complete("s", "p", "m", None)
+    assert local.requests[0].get_header("Authorization") is None
+
+
+def test_google_request_shape() -> None:
+    opener = RecordingOpener({"candidates": [{"content": {"parts": [{"text": "C"}]}}]})
+    answer = GoogleProvider("https://g/v1beta", opener).complete("s", "p", "gemini", "AIzaK")
+    assert answer == "C"
+    assert opener.requests[0].full_url == "https://g/v1beta/models/gemini:generateContent"
+    assert opener.requests[0].get_header("X-goog-api-key") == "AIzaK"
+
+
+@pytest.mark.parametrize("reply", [{}, {"choices": []}, {"choices": [{"message": {"content": 3}}]}])
+def test_unexpected_reply_format(reply: object) -> None:
+    with pytest.raises(ProviderError, match="Unexpected"):
+        OpenAiCompatibleProvider("https://o", RecordingOpener(reply)).complete("s", "p", "m", "k")
+
+
+@pytest.mark.parametrize(
+    ("error", "expected"),
+    [
+        (
+            http_error(401, b'{"error": {"message": "invalid x-api-key"}}'),
+            "HTTP 401: invalid x-api-key",
+        ),
+        (http_error(404, b'{"error": "model not found"}'), "HTTP 404: model not found"),
+        (http_error(500, b"<html>"), "HTTP 500: Reason"),
+        (http_error(502, b"[1]"), "HTTP 502: Reason"),
+        (urllib.error.URLError("refused"), "Cannot reach the provider: refused"),
+        (TimeoutError(), "did not answer in time"),
+    ],
+)
+def test_transport_errors_are_key_free(error: BaseException, expected: str) -> None:
+    with pytest.raises(ProviderError, match=expected) as caught:
+        AnthropicProvider("https://a", RecordingOpener(error=error)).complete("s", "p", "m", SECRET)
+    assert SECRET not in str(caught.value)
+    assert caught.value.__cause__ is None
+
+
+def test_invalid_json_reply() -> None:
+    with pytest.raises(ProviderError, match="invalid reply"):
+        AnthropicProvider("https://a", RecordingOpener(b"not json")).complete("s", "p", "m", "k")
+
+
+def test_non_http_endpoint_is_refused_before_any_request() -> None:
+    opener = RecordingOpener({})
+    with pytest.raises(ProviderError, match="http"):
+        OpenAiCompatibleProvider("file:///etc", opener).complete("s", "p", "m", None)
+    assert opener.requests == []
+
+
+def test_default_opener_delegates_to_urlopen(monkeypatch: pytest.MonkeyPatch) -> None:
+    seen: list[float] = []
+
+    def fake_urlopen(request: urllib.request.Request, timeout: float) -> FakeResponse:
+        seen.append(timeout)
+        return FakeResponse(b"{}")
+
+    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+    request = urllib.request.Request("https://x")
+    assert _default_opener(request, 5.0).read() == b"{}"
+    assert seen == [5.0]
+
+
+@pytest.mark.parametrize(
+    ("provider_id", "kind"),
+    [
+        ("anthropic", AnthropicProvider),
+        ("google", GoogleProvider),
+        ("openai", OpenAiCompatibleProvider),
+        ("mistral", OpenAiCompatibleProvider),
+        ("local", OpenAiCompatibleProvider),
+    ],
+)
+def test_build_provider(provider_id: str, kind: type) -> None:
+    assert isinstance(build_provider(provider_id, "https://x"), kind)
+
+
+# --- KeyringKeyStore --------------------------------------------------------------
+
+
+class MemoryKeyring(KeyringBackend):
+    priority = 1
+
+    def __init__(self) -> None:
+        super().__init__()  # type: ignore[no-untyped-call]  # keyring ships no annotations here
+        self.store: dict[tuple[str, str], str] = {}
+
+    def get_password(self, service: str, username: str) -> str | None:
+        return self.store.get((service, username))
+
+    def set_password(self, service: str, username: str, password: str) -> None:
+        self.store[(service, username)] = password
+
+    def delete_password(self, service: str, username: str) -> None:
+        if (service, username) not in self.store:
+            raise PasswordDeleteError("absent")
+        del self.store[(service, username)]
+
+
+def test_keystore_round_trip_in_keyring_only() -> None:
+    backend = MemoryKeyring()
+    keyring.set_keyring(backend)
+    store = KeyringKeyStore()
+    assert store.get("anthropic") is None
+    store.set("anthropic", SECRET)
+    assert store.get("anthropic") == SECRET
+    assert backend.store == {("busscope-ai", "anthropic"): SECRET}
+    store.delete("anthropic")
+    store.delete("anthropic")
+    assert backend.store == {}
+
+
+def test_keystore_failures_are_key_free_provider_errors() -> None:
+    store = KeyringKeyStore()  # conftest installs the fail backend
+    with pytest.raises(ProviderError, match="unavailable"):
+        store.get("anthropic")
+    with pytest.raises(ProviderError, match="Cannot store") as caught:
+        store.set("anthropic", SECRET)
+    assert SECRET not in str(caught.value)
+    with pytest.raises(ProviderError, match="Cannot delete"):
+        store.delete("anthropic")

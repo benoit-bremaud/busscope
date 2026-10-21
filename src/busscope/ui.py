@@ -283,6 +283,10 @@ class CaptureWindow(QMainWindow):
         layout.addWidget(field)
         return widget
 
+    def captured_frames(self) -> tuple[CapturedFrame, ...]:
+        """Frames captured or loaded so far, for read-only consumers such as the AI tab."""
+        return tuple(self._records)
+
     def features(self) -> frozenset[Feature]:
         """Features the chosen protocol resolves from the catalogue; none before a pick."""
         protocol = self.protocol_selector.selected

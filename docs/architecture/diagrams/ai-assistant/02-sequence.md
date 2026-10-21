@@ -21,7 +21,7 @@ sequenceDiagram
         Svc->>Keys: get(provider_id)
         Keys-->>Svc: secret (never logged)
     end
-    Svc->>Prov: complete(prompt, model, key)
+    Svc->>Prov: complete(system, prompt, model, key)
     alt success
         Prov-->>Svc: answer text
         Svc-->>UI: answer

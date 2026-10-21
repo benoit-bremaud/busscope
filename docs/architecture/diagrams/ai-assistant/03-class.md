@@ -9,14 +9,14 @@ classDiagram
         +default_model: str
         +needs_key: bool
         +key_url: str
+        +key_hint: str
         +key_pattern: str
         +default_endpoint: str
-        +is_local: bool
         +key_looks_valid(key) bool
     }
     class LlmProvider {
         <<Protocol>>
-        +complete(prompt: str, model: str, key: str|None) str
+        +complete(system, prompt, model, key: str|None) str
     }
     class KeyStore {
         <<Protocol>>
@@ -26,9 +26,9 @@ classDiagram
     }
     class RedactionOptions {
         <<frozen dataclass>>
-        +anonymise_ids: bool = True
+        +anonymise_addresses: bool = True
         +relative_time: bool = True
-        +mask_identity_frames: bool = True
+        +mask_undecoded_payloads: bool = True
         +max_frames: int = 200
     }
     class Redactor {
