@@ -1063,6 +1063,8 @@ def test_capture_tab_starts_with_only_the_protocol_picker(qt_application: QAppli
     assert window.protocol_selector.selected is None
     assert not any(_visible_capture_controls(window).values())
     assert window.status_pill.text() == "Choose protocol"
+    assert window.listen_only_label.isHidden() is False
+    assert window.listen_only_icon.isHidden() is False
     # Space and Ctrl+M have nothing to act on yet.
     window.trigger_primary()
     window.switch_mode()

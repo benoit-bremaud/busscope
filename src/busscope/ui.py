@@ -226,13 +226,16 @@ class CaptureWindow(QMainWindow):
         spacer.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
         self.toolbar.addWidget(spacer)
         self.toolbar.addWidget(self.status_pill)
-        self.toolbar.addWidget(self.listen_only_icon)
-        self.toolbar.addWidget(self.listen_only_label)
         self.toolbar.addWidget(self.overflow_button)
 
         capture_widget = QWidget()
         layout = QVBoxLayout(capture_widget)
-        layout.addWidget(self.protocol_selector)
+        # The listen-only badge stays visible in every state, even before a source exists.
+        top_row = QHBoxLayout()
+        top_row.addWidget(self.protocol_selector)
+        top_row.addWidget(self.listen_only_icon)
+        top_row.addWidget(self.listen_only_label)
+        layout.addLayout(top_row)
         layout.addLayout(controls)
         layout.addWidget(self.toolbar)
         # Space and Ctrl+M belong to the capture tab only, not to Settings or Transmission.

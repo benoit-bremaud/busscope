@@ -6,6 +6,7 @@ chosen, the toolbar actions inside it follow the existing rules of `toolbar.py` 
 | Control | NoProtocol | ProtocolChosen | LiveIdle | Capturing | ReplayIdle | Replaying |
 | --- | --- | --- | --- | --- | --- | --- |
 | Protocol picker | ✓ | ✓ | ✓ | ✓ locked | ✓ | ✓ locked |
+| Listen-only badge | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Live / Replay switch | · | ✓ if both sources | ✓ | ✓ disabled | ✓ | ✓ disabled |
 | Backend (socketcan/slcan) | · | · | ✓ `CAN_BACKEND` | ✓ locked | · | · |
 | Channel | · | · | ✓ `CAN_CHANNEL` | ✓ locked | · | · |
@@ -17,7 +18,7 @@ chosen, the toolbar actions inside it follow the existing rules of `toolbar.py` 
 ```text
 NoProtocol                         LiveIdle (slcan)
 ┌──────────────────────────────┐   ┌──────────────────────────────────────────────────┐
-│ [ Protocol ▾ ]               │   │ [CAN 2.0B ▾] (Live|Replay) [slcan▾] [/dev/ttyACM0]│
+│ [ Protocol ▾ ]   🔒Listen-only │   │ [CAN 2.0B ▾] (Live|Replay) [slcan▾] [/dev/ttyACM0]│
 │                              │   │ ☐ Accept unverified silence           [▶ Start]  │
 │   Pick a protocol to begin   │   │                                                  │
 └──────────────────────────────┘   └──────────────────────────────────────────────────┘
