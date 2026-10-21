@@ -25,12 +25,12 @@ def test_default_catalogue_has_the_four_validated_families() -> None:
     assert names == ["Fieldbus", "Serial / industrial", "EV charging", "Generic logic tap"]
 
 
-def test_only_can_2_0b_is_available_today() -> None:
+def test_only_shipped_can_decoding_is_available_today() -> None:
     available = [
         p.key for p in DEFAULT_CATALOGUE.protocols() if p.availability is Availability.AVAILABLE
     ]
 
-    assert available == [DEFAULT_PROTOCOL_KEY]
+    assert available == [DEFAULT_PROTOCOL_KEY, "infypower"]
     assert DEFAULT_CATALOGUE.get(DEFAULT_PROTOCOL_KEY).transport is Transport.CAN
 
 

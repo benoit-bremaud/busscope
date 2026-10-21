@@ -196,6 +196,7 @@ DEFAULT_CATALOGUE = ProtocolCatalogue(
                             "Infypower module",
                             "Infypower power-module status and measurements.",
                             _CAN,
+                            Availability.AVAILABLE,
                             carried_by=DEFAULT_PROTOCOL_KEY,
                             keywords=("charger", "rectifier"),
                         ),
