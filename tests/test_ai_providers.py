@@ -4,6 +4,7 @@ import io
 import json
 import urllib.error
 import urllib.request
+from collections.abc import Callable
 from email.message import Message
 
 import keyring
@@ -11,6 +12,7 @@ import pytest
 from keyring.backend import KeyringBackend
 from keyring.errors import PasswordDeleteError
 
+from busscope import ai_providers
 from busscope.ai_assistant import ProviderError
 from busscope.ai_keystore import KeyringKeyStore
 from busscope.ai_providers import (
@@ -107,9 +109,9 @@ def test_openai_compatible_request_shape_with_and_without_key() -> None:
 
 def test_google_request_shape() -> None:
     opener = RecordingOpener({"candidates": [{"content": {"parts": [{"text": "C"}]}}]})
-    answer = GoogleProvider("https://g/v1beta", opener).complete("s", "p", "gemini", "AIzaK")
+    answer = GoogleProvider("https://g/v1beta", opener).complete("s", "p", "gem/../x?a", "AIzaK")
     assert answer == "C"
-    assert opener.requests[0].full_url == "https://g/v1beta/models/gemini:generateContent"
+    assert opener.requests[0].full_url == "https://g/v1beta/models/gem%2F..%2Fx%3Fa:generateContent"
     assert opener.requests[0].get_header("X-goog-api-key") == "AIzaK"
 
 
@@ -131,6 +133,8 @@ def test_unexpected_reply_format(reply: object) -> None:
         (http_error(502, b"[1]"), "HTTP 502: Reason"),
         (urllib.error.URLError("refused"), "Cannot reach the provider: refused"),
         (TimeoutError(), "did not answer in time"),
+        (ConnectionResetError(), "Connection error: ConnectionResetError"),
+        (UnicodeDecodeError("utf-8", b"\xff", 0, 1, "bad"), "invalid reply"),
     ],
 )
 def test_transport_errors_are_key_free(error: BaseException, expected: str) -> None:
@@ -153,17 +157,46 @@ def test_unsafe_endpoint_is_refused_before_any_request(endpoint: str) -> None:
     assert opener.requests == []
 
 
-def test_default_opener_delegates_to_urlopen(monkeypatch: pytest.MonkeyPatch) -> None:
-    seen: list[float] = []
+@pytest.mark.parametrize(
+    ("url", "local"), [("http://localhost:1/v1", True), ("https://api.example.com", False)]
+)
+def test_default_opener_picks_proxy_free_opener_for_local(
+    monkeypatch: pytest.MonkeyPatch, url: str, local: bool
+) -> None:
+    seen: list[tuple[str, float]] = []
 
-    def fake_urlopen(request: urllib.request.Request, timeout: float) -> FakeResponse:
-        seen.append(timeout)
-        return FakeResponse(b"{}")
+    def fake_open(name: str) -> Callable[..., FakeResponse]:
+        def open_(request: urllib.request.Request, timeout: float) -> FakeResponse:
+            seen.append((name, timeout))
+            return FakeResponse(b"{}")
 
-    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
-    request = urllib.request.Request("https://x")
-    assert _default_opener(request, 5.0).read() == b"{}"
-    assert seen == [5.0]
+        return open_
+
+    monkeypatch.setattr(ai_providers._LOCAL_OPENER, "open", fake_open("local"))
+    monkeypatch.setattr(ai_providers._REMOTE_OPENER, "open", fake_open("remote"))
+    assert _default_opener(urllib.request.Request(url), 5.0).read() == b"{}"  # noqa: S310 - fixed test URLs
+    assert seen == [("local" if local else "remote", 5.0)]
+
+
+def handlers(opener: urllib.request.OpenerDirector) -> list[urllib.request.BaseHandler]:
+    found: list[urllib.request.BaseHandler] = vars(opener)["handlers"]
+    return found
+
+
+def test_local_opener_ignores_proxies_and_no_opener_follows_redirects() -> None:
+    for opener in (ai_providers._LOCAL_OPENER, ai_providers._REMOTE_OPENER):
+        redirects = [
+            h for h in handlers(opener) if isinstance(h, urllib.request.HTTPRedirectHandler)
+        ]
+        assert redirects and all(isinstance(h, ai_providers._NoRedirect) for h in redirects)
+    ai_providers._NoRedirect().redirect_request()  # returns None: the redirect is refused
+    # An empty ProxyHandler registers no proxy routes, and it replaces the env-reading default.
+    proxied = [
+        h
+        for h in handlers(ai_providers._LOCAL_OPENER)
+        if isinstance(h, urllib.request.ProxyHandler)
+    ]
+    assert proxied == []
 
 
 @pytest.mark.parametrize(

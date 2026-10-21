@@ -232,8 +232,10 @@ def test_full_diagnosis_flow_previews_confirms_and_renders_plain_text(
     assert not widget.send_button.isHidden()
     assert "dst=M1" in widget.preview.toPlainText()
     assert "leave this PC" in widget.destination_label.text()
+    preview = widget.preview.toPlainText()
+    assert preview.startswith("Model: claude-opus-5-5\n\nSystem:\n")
     widget.send_button.click()
-    assert harness.provider.prompts == [widget.preview.toPlainText()]
+    assert preview.endswith(harness.provider.prompts[0])
     assert "leave this PC" in harness.confirm_messages[0]
     assert widget.answer.toPlainText() == "<b>Module M1 is fine</b>"
     assert widget.status_label.text() == "Answer received"
@@ -327,3 +329,50 @@ def test_job_emits_answer_or_key_free_error(qt_application: QApplication) -> Non
     _Job(lambda: "ok", signals).run()
     _Job(failing, signals).run()
     assert seen == ["done:ok", "failed:boom"]
+
+
+def test_editing_model_or_endpoint_invalidates_preview(
+    qt_application: QApplication, tmp_path: Path
+) -> None:
+    del qt_application
+    harness = Harness(tmp_path, FakeKeys(), FakeProvider())
+    harness.frames.append(frame())
+    widget = harness.widget()
+    select(widget, "local")
+    for field in (widget.model_input, widget.endpoint_input):
+        widget.question_input.setPlainText("why?")
+        widget.prepare()
+        assert not widget.send_button.isHidden()
+        field.textEdited.emit("x")
+        assert widget.send_button.isHidden()
+        widget.send()
+        assert harness.confirm_messages == []
+
+
+def test_keyring_is_read_once_per_provider(qt_application: QApplication, tmp_path: Path) -> None:
+    del qt_application
+
+    class CountingKeys(FakeKeys):
+        reads = 0
+
+        def get(self, provider_id: str) -> str | None:
+            CountingKeys.reads += 1
+            return super().get(provider_id)
+
+    widget = Harness(tmp_path, CountingKeys(), FakeProvider()).widget()
+    for _ in range(3):
+        widget.refresh()
+    assert CountingKeys.reads == 1
+
+
+def test_job_reports_unexpected_errors_without_details(qt_application: QApplication) -> None:
+    del qt_application
+    signals = _Signals()
+    seen: list[str] = []
+    signals.failed.connect(seen.append)
+
+    def crashing() -> str:
+        raise RuntimeError("secret detail")
+
+    _Job(crashing, signals).run()
+    assert seen == ["Unexpected error while contacting the provider"]

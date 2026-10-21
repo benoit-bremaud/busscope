@@ -173,7 +173,9 @@ class Redactor:
         identifier = record.result.identifier
         stamp = f"t={record.timestamp_seconds - origin:+.3f}s"
         if identifier is None:
-            head = f"id=0x{frame.arbitration_id:X}"
+            # A raw 29-bit id can embed module addresses: hide it when pseudonymising.
+            raw_id = f"0x{frame.arbitration_id:X}"
+            head = "id=<undecoded>" if options.anonymise_addresses else f"id={raw_id}"
             decoded = False
         else:
             address = self._address_namer(options, aliases)

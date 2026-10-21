@@ -128,7 +128,8 @@ def test_redaction_masks_undecoded_payloads_but_keeps_decoded_ones() -> None:
     lines = Redactor().redact(frames, RedactionOptions()).splitlines()
     assert "data=00 01 02 03 04 05 06 07" in lines[0]
     assert "<8 bytes masked>" in lines[1] and "SERIAL" not in lines[1]
-    assert lines[2].endswith("id=0x123 data=<2 bytes masked>")
+    assert lines[2].endswith("id=<undecoded> data=<2 bytes masked>")
+    assert "0x123" not in lines[2]
 
 
 def test_redaction_can_be_disabled() -> None:
@@ -139,6 +140,8 @@ def test_redaction_can_be_disabled() -> None:
     line = Redactor().redact(frames, options)
     assert line.startswith("t=+12.500s")
     assert "dst=0x3F src=0x05" in line
+    raw = Redactor().redact([captured(0x123, b"", 0.0)], options)
+    assert "id=0x123" in raw
     assert "AA AA AA AA AA AA AA AA" in line
 
 
@@ -147,7 +150,7 @@ def test_redaction_keeps_only_most_recent_frames_and_flags_error_frames() -> Non
     frames.append(captured(0x200, b"", 9.0, error=True))
     lines = Redactor().redact(frames, RedactionOptions(max_frames=2)).splitlines()
     assert len(lines) == 2
-    assert "id=0x104" in lines[0]
+    assert lines[0].startswith("t=+0.000s id=<undecoded>")
     assert lines[1].endswith("ERROR-FRAME")
 
 

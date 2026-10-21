@@ -26,6 +26,7 @@ from PySide6.QtWidgets import (
 
 from busscope.ai_assistant import (
     PROVIDERS,
+    SYSTEM_PROMPT,
     DiagnosisRequest,
     DiagnosisService,
     KeyStore,
@@ -67,6 +68,8 @@ class _Job(QRunnable):
             self._signals.done.emit(self._work())
         except ProviderError as error:
             self._signals.failed.emit(str(error))
+        except Exception:  # noqa: BLE001 - any escape would leave the UI waiting forever
+            self._signals.failed.emit("Unexpected error while contacting the provider")
 
 
 def thread_pool_runner(
@@ -118,6 +121,8 @@ class AssistantWidget(QWidget):
         self._runner = runner
         self._confirm = confirm
         self._request: DiagnosisRequest | None = None
+        # Key presence per provider, read once: a locked keyring must not freeze each refresh.
+        self._key_present: dict[str, bool] = {}
 
         self.provider_input = QComboBox()
         self.provider_input.setAccessibleName("AI provider")
@@ -202,6 +207,9 @@ class AssistantWidget(QWidget):
         self.provider_input.currentIndexChanged.connect(self._on_provider_changed)
         self.model_input.editingFinished.connect(self._save_choices)
         self.endpoint_input.editingFinished.connect(self._save_choices)
+        # A preview is only valid for the model and destination it was built for.
+        self.model_input.textEdited.connect(lambda _text: self._reset_preview())
+        self.endpoint_input.textEdited.connect(lambda _text: self._reset_preview())
         self.key_input.textChanged.connect(self._on_key_typed)
         self.save_key_button.clicked.connect(self.save_key)
         self.forget_key_button.clicked.connect(self.forget_key)
@@ -230,6 +238,10 @@ class AssistantWidget(QWidget):
         if self.spec.needs_key:
             return self.spec.default_endpoint
         return self.endpoint_input.text().strip() or self.spec.default_endpoint
+
+    def _model(self) -> str:
+        """Model actually used: the typed one, else the provider default."""
+        return self.model_input.text().strip() or self.spec.default_model
 
     def _service(self) -> DiagnosisService:
         """Service bound to the adapter of the selected provider."""
@@ -266,11 +278,14 @@ class AssistantWidget(QWidget):
 
     def _has_key(self) -> bool:
         """Whether a key is stored; a keyring failure counts as no key."""
-        try:
-            return bool(self._keys.get(self.spec.id))
-        except ProviderError as error:
-            self.status_label.setText(f"Error: {error}")
-            return False
+        provider_id = self.spec.id
+        if provider_id not in self._key_present:
+            try:
+                self._key_present[provider_id] = bool(self._keys.get(provider_id))
+            except ProviderError as error:
+                self.status_label.setText(f"Error: {error}")
+                return False
+        return self._key_present[provider_id]
 
     def refresh(self) -> None:
         """Re-evaluate what is shown: called on provider, key or capture changes."""
@@ -322,6 +337,7 @@ class AssistantWidget(QWidget):
             blocker = QSignalBlocker(self.key_input)
             self.key_input.clear()
             del blocker
+        self._key_present[self.spec.id] = True
         self.status_label.setText("Key saved")
         self.refresh()
 
@@ -332,6 +348,7 @@ class AssistantWidget(QWidget):
         except ProviderError as error:
             self.status_label.setText(f"Error: {error}")
             return
+        self._key_present[self.spec.id] = False
         self.status_label.setText("Key forgotten")
         self.refresh()
 
@@ -363,7 +380,9 @@ class AssistantWidget(QWidget):
             self.status_label.setText(f"Error: {error}")
             return
         self._request = request
-        self.preview.setPlainText(request.prompt())
+        self.preview.setPlainText(
+            f"Model: {self._model()}\n\nSystem:\n{SYSTEM_PROMPT}\n\n{request.prompt()}"
+        )
         self.destination_label.setText(self._destination())
         for widget in (self.preview, self.destination_label, self.send_button):
             widget.setVisible(True)

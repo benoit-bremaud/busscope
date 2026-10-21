@@ -11,6 +11,7 @@ import urllib.error
 import urllib.request
 from collections.abc import Callable, Mapping
 from typing import Protocol
+from urllib.parse import quote
 
 from busscope.ai_assistant import LlmProvider, ProviderError, endpoint_is_local
 
@@ -36,9 +37,23 @@ class _Response(Protocol):
 Opener = Callable[[urllib.request.Request, float], _Response]
 
 
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    """Refuse redirects: urllib would replay the auth headers, possibly over cleartext."""
+
+    def redirect_request(self, *args: object, **kwargs: object) -> None:
+        """Surface any redirect as an HTTPError instead of following it."""
+        return None
+
+
+# Local endpoints bypass environment proxies so "nothing leaves this PC" stays true.
+_LOCAL_OPENER = urllib.request.build_opener(_NoRedirect, urllib.request.ProxyHandler({}))
+_REMOTE_OPENER = urllib.request.build_opener(_NoRedirect)
+
+
 def _default_opener(request: urllib.request.Request, timeout: float) -> _Response:
-    """Production opener: urllib with an explicit timeout."""
-    response: _Response = urllib.request.urlopen(request, timeout=timeout)  # noqa: S310
+    """Production opener: no redirects, no proxy for loopback, explicit timeout."""
+    opener = _LOCAL_OPENER if endpoint_is_local(request.full_url) else _REMOTE_OPENER
+    response: _Response = opener.open(request, timeout=timeout)
     return response
 
 
@@ -64,8 +79,10 @@ def _post_json(
         raise ProviderError(f"Cannot reach the provider: {error.reason}") from None
     except TimeoutError:
         raise ProviderError("The provider did not answer in time") from None
-    except json.JSONDecodeError:
+    except ValueError:  # malformed JSON or non-UTF-8 bytes
         raise ProviderError("The provider sent an invalid reply") from None
+    except OSError as error:  # dropped connection, TLS failure while reading
+        raise ProviderError(f"Connection error: {type(error).__name__}") from None
 
 
 def _error_text(error: urllib.error.HTTPError) -> str:
@@ -174,7 +191,7 @@ class GoogleProvider:
         """Return the first candidate's first text part."""
         reply = _post_json(
             self._opener,
-            f"{self._base_url}/models/{model}:generateContent",
+            f"{self._base_url}/models/{quote(model, safe='')}:generateContent",
             {"x-goog-api-key": key or ""},
             {
                 "system_instruction": {"parts": [{"text": system}]},
