@@ -126,3 +126,6 @@ ordinary commits from that PR's branch.
 - **PR #68 merged** (`ec83491`) — `style(src): fix ruff format drift in source files`
   (`style/64-ruff-format`, closes #64). `ruff format` applied to `src` and `tests` (`54a13fc`);
   `ruff format --check` now enforced in `quality.yml` (`678af61`). Codex review: no findings.
+- **PR #70 merged** (`0f61770`) — `feat(ui): context-aware icon toolbar for capture and replay`
+  (`feat/69-icon-toolbar`, closes #69). Lucide SVG icons, Qt-free toolbar rules
+  (`toolbar.py`), Ctrl+M mode switch; Codex P2 findings fixed in `4465b93`. Follow-ups in #71.

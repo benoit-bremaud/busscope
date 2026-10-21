@@ -39,6 +39,8 @@ from busscope.capture import CanInterface, CaptureConfiguration
 from busscope.icons import load_icon
 from busscope.preferences import DisplayPreferences, IdentifierFormat
 from busscope.protocol import DecodeResult
+from busscope.protocol_catalogue import DEFAULT_CATALOGUE, DEFAULT_PROTOCOL_KEY, Transport
+from busscope.protocol_selector import ProtocolSelector
 from busscope.replay import CsvCaptureLoader, ReplayController
 from busscope.settings_ui import SettingsWidget
 from busscope.toolbar import (
@@ -194,12 +196,18 @@ class CaptureWindow(QMainWindow):
         live_settings_layout.addWidget(QLabel("Channel:"))
         live_settings_layout.addWidget(self.channel_input)
         live_settings_layout.addWidget(self.unverified_silence_input)
+        self.can_filter = QWidget()
+        can_filter_layout = QHBoxLayout(self.can_filter)
+        can_filter_layout.setContentsMargins(0, 0, 0, 0)
+        can_filter_layout.addWidget(QLabel("Filter:"))
+        can_filter_layout.addWidget(self.filter_input)
+        # Source and protocol come first; transport-specific fields follow the choice.
+        self.protocol_selector = ProtocolSelector(DEFAULT_CATALOGUE, DEFAULT_PROTOCOL_KEY)
         controls = QHBoxLayout()
         controls.addWidget(self.live_mode_button)
         controls.addWidget(self.replay_mode_button)
         controls.addWidget(self.live_settings)
-        controls.addWidget(QLabel("Filter:"))
-        controls.addWidget(self.filter_input)
+        controls.addWidget(self.can_filter)
         self.toolbar = QToolBar()
         self.toolbar.addAction(self.primary_action)
         for action in (
@@ -220,6 +228,7 @@ class CaptureWindow(QMainWindow):
 
         capture_widget = QWidget()
         layout = QVBoxLayout(capture_widget)
+        layout.addWidget(self.protocol_selector)
         layout.addLayout(controls)
         layout.addWidget(self.toolbar)
         # Space and Ctrl+M belong to the capture tab only, not to Settings or Transmission.
@@ -252,6 +261,7 @@ class CaptureWindow(QMainWindow):
         self.replay_mode_button.clicked.connect(lambda: self.set_mode(ToolbarMode.REPLAY))
         self.switch_mode_action.triggered.connect(self.switch_mode)
         self.filter_input.textChanged.connect(self.apply_filter)
+        self.protocol_selector.protocol_changed.connect(lambda _: self._sync_toolbar())
         self.settings_widget.preferences_changed.connect(self.apply_preferences)
         self.apply_preferences(preferences)
         self._sync_toolbar()
@@ -299,7 +309,12 @@ class CaptureWindow(QMainWindow):
         switchable = can_switch_mode(state)
         self.live_mode_button.setEnabled(switchable)
         self.replay_mode_button.setEnabled(switchable)
-        self.live_settings.setVisible(self._mode is ToolbarMode.LIVE)
+        is_can = self.protocol_selector.selected.transport is Transport.CAN
+        live = self._mode is ToolbarMode.LIVE
+        self.protocol_selector.setVisible(live)
+        self.protocol_selector.setEnabled(not self._capturing)
+        self.live_settings.setVisible(live and is_can)
+        self.can_filter.setVisible(is_can)
         self.reset_replay_action.setVisible(self._mode is ToolbarMode.REPLAY)
         self.freeze_action.setChecked(self._display_paused)
         freeze_icon, freeze_text = (
