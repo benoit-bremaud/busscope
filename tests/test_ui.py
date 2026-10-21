@@ -1008,3 +1008,19 @@ def test_play_after_replay_finished_restarts_from_the_beginning(
     assert window.status_pill.text() == "Playing"
     assert window.status_label.text() == "Replaying CSV capture"
     assert window._records == []
+
+
+def test_capture_tab_offers_protocol_catalogue_with_can_fields(
+    qt_application: QApplication,
+) -> None:
+    del qt_application
+    window = create_test_window(FakeController([]))
+
+    assert window.protocol_selector.selected.name == "CAN 2.0B"
+    assert window.protocol_selector.isEnabled()
+    assert window.can_filter.isHidden() is False
+    window.start_capture()
+    assert window.protocol_selector.isEnabled() is False
+    window.stop_capture()
+    window.set_mode(ToolbarMode.REPLAY)
+    assert window.protocol_selector.isHidden()
