@@ -3,7 +3,7 @@
 ```mermaid
 sequenceDiagram
     actor Op as Operator
-    participant UI as AssistantPanel (Qt)
+    participant UI as AssistantWidget (Qt)
     participant Svc as DiagnosisService (domain)
     participant Red as Redactor (domain)
     participant Keys as KeyStore (keyring adapter)

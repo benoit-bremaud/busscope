@@ -123,6 +123,8 @@ class AssistantWidget(QWidget):
         self._request: DiagnosisRequest | None = None
         # Key presence per provider, read once: a locked keyring must not freeze each refresh.
         self._key_present: dict[str, bool] = {}
+        # Bumped on provider change so a late reply never lands under another provider.
+        self._generation = 0
 
         self.provider_input = QComboBox()
         self.provider_input.setAccessibleName("AI provider")
@@ -265,6 +267,10 @@ class AssistantWidget(QWidget):
                 f'Create a key at <a href="{spec.key_url}">{spec.key_url}</a> — {spec.key_hint}'
             )
         self.status_label.clear()
+        self._generation += 1
+        self.answer.clear()
+        self.send_button.setEnabled(True)
+        self.test_button.setEnabled(True)
         self._save_choices()
         self.refresh()
 
@@ -284,7 +290,7 @@ class AssistantWidget(QWidget):
                 self._key_present[provider_id] = bool(self._keys.get(provider_id))
             except ProviderError as error:
                 self.status_label.setText(f"Error: {error}")
-                return False
+                self._key_present[provider_id] = False
         return self._key_present[provider_id]
 
     def refresh(self) -> None:
@@ -356,11 +362,28 @@ class AssistantWidget(QWidget):
         """Send a minimal request in the background."""
         service, spec, model = self._service(), self.spec, self.model_input.text()
         self.status_label.setText("Testing…")
+        self.test_button.setEnabled(False)
         self._runner(
             lambda: service.test_connection(spec, model),
-            lambda _answer: self.status_label.setText("Connection OK"),
-            lambda message: self.status_label.setText(f"Error: {message}"),
+            self._current(lambda _answer: self._test_done("Connection OK")),
+            self._current(lambda message: self._test_done(f"Error: {message}")),
         )
+
+    def _current(self, callback: Callable[[str], None]) -> Callable[[str], None]:
+        """Wrap a callback so it is dropped if the provider changed meanwhile."""
+        generation = self._generation
+
+        def guarded(text: str) -> None:
+            """Forward only while the same provider is selected."""
+            if generation == self._generation:
+                callback(text)
+
+        return guarded
+
+    def _test_done(self, status: str) -> None:
+        """Show the test outcome and allow another test."""
+        self.status_label.setText(status)
+        self.test_button.setEnabled(True)
 
     def _options(self) -> RedactionOptions:
         """Redaction options from the checkboxes."""
@@ -404,7 +427,11 @@ class AssistantWidget(QWidget):
         service, spec, model = self._service(), self.spec, self.model_input.text()
         self.status_label.setText("Waiting for the answer…")
         self.send_button.setEnabled(False)
-        self._runner(lambda: service.ask(request, spec, model), self._on_answer, self._on_error)
+        self._runner(
+            lambda: service.ask(request, spec, model),
+            self._current(self._on_answer),
+            self._current(self._on_error),
+        )
 
     def _on_answer(self, text: str) -> None:
         """Show the answer as plain text, never as rich text."""

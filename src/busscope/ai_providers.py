@@ -11,7 +11,7 @@ import urllib.error
 import urllib.request
 from collections.abc import Callable, Mapping
 from typing import Protocol
-from urllib.parse import quote
+from urllib.parse import quote, urlsplit
 
 from busscope.ai_assistant import LlmProvider, ProviderError, endpoint_is_local
 
@@ -62,7 +62,8 @@ def _post_json(
 ) -> object:
     """POST a JSON body and return the decoded JSON reply, or raise a key-free error."""
     # Cleartext HTTP only to this PC (local models); anything that leaves it must use TLS.
-    if not (url.startswith("https://") or (url.startswith("http:") and endpoint_is_local(url))):
+    scheme = urlsplit(url).scheme.lower()
+    if not (scheme == "https" or (scheme == "http" and endpoint_is_local(url))):
         raise ProviderError("Endpoint must use https unless it is on this PC")
     request = urllib.request.Request(  # noqa: S310 - scheme checked above
         url,
@@ -115,6 +116,19 @@ def _dig(payload: object, *path: str | int) -> str:
     return node
 
 
+def _peek(payload: object, *path: str | int) -> str | None:
+    """Like _dig, but an absent or non-text value is just None (optional metadata)."""
+    try:
+        return _dig(payload, *path)
+    except ProviderError:
+        return None
+
+
+def _mark_truncated(answer: str, truncated: bool) -> str:
+    """Tell the operator when the model stopped at the output limit."""
+    return f"{answer}\n\n[answer truncated]" if truncated else answer
+
+
 class AnthropicProvider:
     """Claude Messages API."""
 
@@ -147,9 +161,12 @@ class AnthropicProvider:
             and block.get("type") == "text"
             and isinstance(block.get("text"), str)
         ]
+        stop = _peek(reply, "stop_reason")
+        if stop == "refusal":
+            raise ProviderError("The model declined to answer")
         if not texts:
             raise ProviderError("The provider returned no text answer")
-        return "".join(texts)
+        return _mark_truncated("".join(texts), stop == "max_tokens")
 
 
 class OpenAiCompatibleProvider:
@@ -176,7 +193,8 @@ class OpenAiCompatibleProvider:
             },
             _TIMEOUT_SECONDS,
         )
-        return _dig(reply, "choices", 0, "message", "content")
+        answer = _dig(reply, "choices", 0, "message", "content")
+        return _mark_truncated(answer, _peek(reply, "choices", 0, "finish_reason") == "length")
 
 
 class GoogleProvider:
@@ -199,7 +217,12 @@ class GoogleProvider:
             },
             _TIMEOUT_SECONDS,
         )
-        return _dig(reply, "candidates", 0, "content", "parts", 0, "text")
+        if _peek(reply, "candidates", 0, "finishReason") == "SAFETY":
+            raise ProviderError("The model declined to answer")
+        answer = _dig(reply, "candidates", 0, "content", "parts", 0, "text")
+        return _mark_truncated(
+            answer, _peek(reply, "candidates", 0, "finishReason") == "MAX_TOKENS"
+        )
 
 
 def build_provider(

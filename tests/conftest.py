@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterator
+
 import keyring
 import pytest
 from keyring.backends.fail import Keyring as FailKeyring
@@ -24,6 +26,9 @@ class FakeControllerMode:
 
 
 @pytest.fixture(autouse=True)
-def _no_real_keyring() -> None:
+def _no_real_keyring() -> Iterator[None]:
     """The suite must never read or write the developer's real OS keyring."""
+    previous = keyring.get_keyring()
     keyring.set_keyring(FailKeyring())  # type: ignore[no-untyped-call]  # unannotated
+    yield
+    keyring.set_keyring(previous)

@@ -50,7 +50,23 @@ classDiagram
     class OpenAiCompatibleProvider
     class GoogleProvider
     class KeyringKeyStore
+    class AssistantWidget {
+        +refresh()
+        +save_key()
+        +forget_key()
+        +test_connection()
+        +prepare()
+        +send()
+    }
+    class build_provider {
+        <<function>>
+        +build_provider(provider_id, endpoint, opener) LlmProvider
+    }
 
+    AssistantWidget --> DiagnosisService
+    AssistantWidget --> KeyStore
+    AssistantWidget ..> build_provider
+    build_provider ..> LlmProvider
     DiagnosisService --> Redactor
     DiagnosisService --> KeyStore
     DiagnosisService --> LlmProvider

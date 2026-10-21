@@ -3,7 +3,7 @@
 ```mermaid
 flowchart TB
     subgraph UI [Qt boundary]
-        panel[ai_assistant_ui.py<br/>AssistantPanel]
+        panel[ai_assistant_ui.py<br/>AssistantWidget]
     end
     subgraph Domain [Qt-free, network-free]
         dom[ai_assistant.py<br/>ProviderSpec, Redactor,<br/>DiagnosisService, ports]

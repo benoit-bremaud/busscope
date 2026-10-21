@@ -379,3 +379,78 @@ def test_job_reports_unexpected_errors_without_details(qt_application: QApplicat
 
     _Job(crashing, signals).run()
     assert seen == ["Unexpected error while contacting the provider"]
+
+
+class DeferredHarness(Harness):
+    """Holds callbacks back, like a slow network, until the test releases them."""
+
+    def __init__(self, tmp_path: Path, keys: FakeKeys, provider: FakeProvider) -> None:
+        super().__init__(tmp_path, keys, provider)
+        self.pending: list[Callable[[], None]] = []
+
+    def runner(  # type: ignore[override]  # instance method: it records pending replies
+        self, work: Callable[[], str], done: Callable[[str], None], error: Callable[[str], None]
+    ) -> None:
+        answer = work()
+        self.pending.append(lambda: done(answer))
+
+    def widget(self) -> AssistantWidget:
+        return AssistantWidget(
+            self.keys,
+            self.factory,
+            self.settings,
+            lambda: self.frames,
+            runner=self.runner,
+            confirm=self.confirm,
+        )
+
+
+def test_late_replies_are_dropped_after_a_provider_change(
+    qt_application: QApplication, tmp_path: Path
+) -> None:
+    del qt_application
+    keys = FakeKeys({"anthropic": ANTHROPIC_KEY})
+    harness = DeferredHarness(tmp_path, keys, FakeProvider("late"))
+    harness.frames.append(frame())
+    widget = harness.widget()
+    widget.test_connection()
+    assert not widget.test_button.isEnabled()
+    widget.question_input.setPlainText("why?")
+    widget.prepare()
+    widget.send()
+    assert not widget.send_button.isEnabled()
+    select(widget, "local")
+    assert widget.test_button.isEnabled() and widget.send_button.isEnabled()
+    for release in harness.pending:
+        release()
+    assert widget.answer.toPlainText() == ""
+    assert widget.status_label.text() == ""
+
+
+def test_test_button_is_reenabled_after_the_reply(
+    qt_application: QApplication, tmp_path: Path
+) -> None:
+    del qt_application
+    harness = DeferredHarness(tmp_path, FakeKeys({"anthropic": ANTHROPIC_KEY}), FakeProvider())
+    widget = harness.widget()
+    widget.test_connection()
+    harness.pending[0]()
+    assert widget.test_button.isEnabled()
+    assert widget.status_label.text() == "Connection OK"
+
+
+def test_keyring_failure_is_cached_as_no_key(qt_application: QApplication, tmp_path: Path) -> None:
+    del qt_application
+
+    class BrokenCounting(FakeKeys):
+        reads = 0
+
+        def get(self, provider_id: str) -> str | None:
+            BrokenCounting.reads += 1
+            raise ProviderError("OS keyring unavailable")
+
+    widget = Harness(tmp_path, BrokenCounting(), FakeProvider()).widget()
+    for _ in range(3):
+        widget.refresh()
+    assert BrokenCounting.reads == 1
+    assert widget.key_state.text() == "No key stored"
