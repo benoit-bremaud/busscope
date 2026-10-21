@@ -1,4 +1,4 @@
-"""Compact protocol picker: a button that opens a searchable family / sub-family tree."""
+"""Compact protocol picker: a button that opens the searchable, recursive domain tree."""
 
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from busscope.protocol_catalogue import Availability, Protocol, ProtocolCatalogue
+from busscope.protocol_catalogue import Availability, Group, Protocol, ProtocolCatalogue
 
 _KEY_ROLE = Qt.ItemDataRole.UserRole
 
@@ -26,13 +26,15 @@ class ProtocolSelector(QWidget):
     _POPUP_WIDTH = 420
     _POPUP_HEIGHT = 320
 
-    def __init__(self, catalogue: ProtocolCatalogue, selected_key: str) -> None:
-        """Build the tree from ``catalogue`` and select ``selected_key``."""
+    def __init__(self, catalogue: ProtocolCatalogue, selected_key: str | None = None) -> None:
+        """Build the tree from ``catalogue``; start on ``selected_key`` or on no protocol."""
         super().__init__()
         self._catalogue = catalogue
-        self._selected = catalogue.get(selected_key)
-        if self._selected.availability is not Availability.AVAILABLE:
-            raise ValueError(f"{selected_key} cannot be captured yet")
+        self._selected: Protocol | None = None
+        if selected_key is not None:
+            self._selected = catalogue.get(selected_key)
+            if self._selected.availability is not Availability.AVAILABLE:
+                raise ValueError(f"{selected_key} cannot be captured yet")
         self.search_input = QLineEdit()
         self.search_input.setPlaceholderText("Search protocols")
         self.search_input.setAccessibleName("Protocol search")
@@ -65,27 +67,28 @@ class ProtocolSelector(QWidget):
         self.tree.itemActivated.connect(self.choose)
 
     @property
-    def selected(self) -> Protocol:
-        """Return the protocol currently chosen for capture."""
+    def selected(self) -> Protocol | None:
+        """Return the protocol currently chosen for capture, ``None`` before the first pick."""
         return self._selected
 
     def open_popup(self) -> None:
         """Show the searchable catalogue under the button, search field focused."""
         self.popup.move(self.button.mapToGlobal(self.button.rect().bottomLeft()))
         self.search_input.clear()
-        self.tree.setCurrentItem(self._items[self._selected.key])
+        self._focus_selected()
         self.popup.show()
         self.search_input.setFocus()
 
     def _update_button(self) -> None:
-        self.button.setText(f"Protocol: {self._selected.name} \u25be")
+        name = "choose\u2026" if self._selected is None else self._selected.name
+        self.button.setText(f"Protocol: {name} \u25be")
 
     def filter(self, text: str) -> None:
         """Hide protocols not matching ``text`` and groups left empty."""
         visible = {protocol.key for protocol in self._catalogue.search(text)}
         for key, item in self._items.items():
             item.setHidden(key not in visible)
-        # Sub-families are listed before families, so children are settled first.
+        # Groups are recorded after their children (post-order), so children settle first.
         for group, children in self._groups:
             group.setHidden(all(child.isHidden() for child in children))
 
@@ -94,26 +97,37 @@ class ProtocolSelector(QWidget):
         return self._items[key]
 
     def _populate(self) -> None:
-        for family in self._catalogue.families:
-            family_item = QTreeWidgetItem(self.tree, [family.name])
-            family_item.setFlags(Qt.ItemFlag.ItemIsEnabled)
-            sub_items = []
-            for sub_family in family.sub_families:
-                sub_item = QTreeWidgetItem(family_item, [sub_family.name])
-                sub_item.setFlags(Qt.ItemFlag.ItemIsEnabled)
-                leaves = [self._protocol_item(sub_item, p) for p in sub_family.protocols]
-                self._items.update(zip((p.key for p in sub_family.protocols), leaves, strict=True))
-                self._groups.append((sub_item, leaves))
-                sub_items.append(sub_item)
-            self._groups.append((family_item, sub_items))
+        # The root only gathers the domains; showing it would add a useless level.
+        for child in self._catalogue.root.children:
+            self._add_node(None, child)
         self.tree.expandAll()
         self.tree.resizeColumnToContents(0)
-        self.tree.setCurrentItem(self._items[self._selected.key])
-        self.tree.scrollToItem(self._items[self._selected.key])
+        self._focus_selected()
 
-    @staticmethod
-    def _protocol_item(parent: QTreeWidgetItem, protocol: Protocol) -> QTreeWidgetItem:
-        item = QTreeWidgetItem(parent, [protocol.name, protocol.availability.value])
+    def _focus_selected(self) -> None:
+        if self._selected is not None:
+            item = self._items[self._selected.key]
+            self.tree.setCurrentItem(item)
+            self.tree.scrollToItem(item)
+
+    def _add_node(self, parent: QTreeWidgetItem | None, node: Group | Protocol) -> QTreeWidgetItem:
+        if isinstance(node, Protocol):
+            item = self._protocol_item(parent, node)
+            self._items[node.key] = item
+            return item
+        item = self._tree_item(parent, [node.name])
+        item.setFlags(Qt.ItemFlag.ItemIsEnabled)
+        children = [self._add_node(item, child) for child in node.children]
+        self._groups.append((item, children))
+        return item
+
+    def _tree_item(self, parent: QTreeWidgetItem | None, texts: list[str]) -> QTreeWidgetItem:
+        if parent is None:
+            return QTreeWidgetItem(self.tree, texts)
+        return QTreeWidgetItem(parent, texts)
+
+    def _protocol_item(self, parent: QTreeWidgetItem | None, protocol: Protocol) -> QTreeWidgetItem:
+        item = self._tree_item(parent, [protocol.name, protocol.availability.value])
         item.setData(0, _KEY_ROLE, protocol.key)
         tooltip = protocol.description
         if protocol.carried_by is not None:

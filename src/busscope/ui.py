@@ -39,7 +39,7 @@ from busscope.capture import CanInterface, CaptureConfiguration
 from busscope.icons import load_icon
 from busscope.preferences import DisplayPreferences, IdentifierFormat
 from busscope.protocol import DecodeResult
-from busscope.protocol_catalogue import DEFAULT_CATALOGUE, DEFAULT_PROTOCOL_KEY, Transport
+from busscope.protocol_catalogue import DEFAULT_CATALOGUE, Feature
 from busscope.protocol_selector import ProtocolSelector
 from busscope.replay import CsvCaptureLoader, ReplayController
 from busscope.settings_ui import SettingsWidget
@@ -89,8 +89,12 @@ class CaptureWindow(QMainWindow):
         preferences: DisplayPreferences,
         settings_widget: SettingsWidget,
         transmission_widget: TransmissionWidget,
+        initial_protocol_key: str | None = None,
     ) -> None:
-        """Wire the controller, preferences and child widgets into the main window."""
+        """Wire the controller, preferences and child widgets into the main window.
+
+        Without ``initial_protocol_key`` the capture tab starts on the protocol picker alone.
+        """
         super().__init__()
         self._controller = controller
         self._preferences = preferences
@@ -130,7 +134,8 @@ class CaptureWindow(QMainWindow):
         self.filter_input = QLineEdit()
         self.filter_input.setPlaceholderText("IDs, e.g. 0x123, 0x456")
         self.filter_input.setAccessibleName("CAN identifier filter")
-        self._mode = ToolbarMode.LIVE
+        # No source until the protocol makes one possible and the operator picks it.
+        self._mode: ToolbarMode | None = None
         self._replay_active = False
         self.primary_action = QAction(self)
         self.primary_shortcut = QAction(self)
@@ -151,7 +156,6 @@ class CaptureWindow(QMainWindow):
         for button in (self.live_mode_button, self.replay_mode_button):
             button.setCheckable(True)
             self._mode_group.addButton(button)
-        self.live_mode_button.setChecked(True)
         self.live_mode_button.setToolTip("Live capture (Ctrl+M to switch)")
         self.replay_mode_button.setToolTip("CSV replay (Ctrl+M to switch)")
         self.switch_mode_action = QAction(self)
@@ -191,18 +195,18 @@ class CaptureWindow(QMainWindow):
         self.live_settings = QWidget()
         live_settings_layout = QHBoxLayout(self.live_settings)
         live_settings_layout.setContentsMargins(0, 0, 0, 0)
-        live_settings_layout.addWidget(QLabel("Backend:"))
-        live_settings_layout.addWidget(self.interface_input)
-        live_settings_layout.addWidget(QLabel("Channel:"))
-        live_settings_layout.addWidget(self.channel_input)
+        self.backend_settings = self._labelled("Backend:", self.interface_input)
+        self.channel_settings = self._labelled("Channel:", self.channel_input)
+        live_settings_layout.addWidget(self.backend_settings)
+        live_settings_layout.addWidget(self.channel_settings)
         live_settings_layout.addWidget(self.unverified_silence_input)
         self.can_filter = QWidget()
         can_filter_layout = QHBoxLayout(self.can_filter)
         can_filter_layout.setContentsMargins(0, 0, 0, 0)
         can_filter_layout.addWidget(QLabel("Filter:"))
         can_filter_layout.addWidget(self.filter_input)
-        # Source and protocol come first; transport-specific fields follow the choice.
-        self.protocol_selector = ProtocolSelector(DEFAULT_CATALOGUE, DEFAULT_PROTOCOL_KEY)
+        # Protocol first, then source; every other control follows from both (issue #77).
+        self.protocol_selector = ProtocolSelector(DEFAULT_CATALOGUE, initial_protocol_key)
         controls = QHBoxLayout()
         controls.addWidget(self.live_mode_button)
         controls.addWidget(self.replay_mode_button)
@@ -222,13 +226,16 @@ class CaptureWindow(QMainWindow):
         spacer.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
         self.toolbar.addWidget(spacer)
         self.toolbar.addWidget(self.status_pill)
-        self.toolbar.addWidget(self.listen_only_icon)
-        self.toolbar.addWidget(self.listen_only_label)
         self.toolbar.addWidget(self.overflow_button)
 
         capture_widget = QWidget()
         layout = QVBoxLayout(capture_widget)
-        layout.addWidget(self.protocol_selector)
+        # The listen-only badge stays visible in every state, even before a source exists.
+        top_row = QHBoxLayout()
+        top_row.addWidget(self.protocol_selector)
+        top_row.addWidget(self.listen_only_icon)
+        top_row.addWidget(self.listen_only_label)
+        layout.addLayout(top_row)
         layout.addLayout(controls)
         layout.addWidget(self.toolbar)
         # Space and Ctrl+M belong to the capture tab only, not to Settings or Transmission.
@@ -261,10 +268,55 @@ class CaptureWindow(QMainWindow):
         self.replay_mode_button.clicked.connect(lambda: self.set_mode(ToolbarMode.REPLAY))
         self.switch_mode_action.triggered.connect(self.switch_mode)
         self.filter_input.textChanged.connect(self.apply_filter)
-        self.protocol_selector.protocol_changed.connect(lambda _: self._sync_toolbar())
+        self.protocol_selector.protocol_changed.connect(lambda _: self._on_protocol_changed())
         self.settings_widget.preferences_changed.connect(self.apply_preferences)
         self.apply_preferences(preferences)
+        self._on_protocol_changed()
+
+    @staticmethod
+    def _labelled(label: str, field: QWidget) -> QWidget:
+        """Group a field with its label so both appear and disappear together."""
+        widget = QWidget()
+        layout = QHBoxLayout(widget)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.addWidget(QLabel(label))
+        layout.addWidget(field)
+        return widget
+
+    def features(self) -> frozenset[Feature]:
+        """Features the chosen protocol resolves from the catalogue; none before a pick."""
+        protocol = self.protocol_selector.selected
+        if protocol is None:
+            return frozenset()
+        return DEFAULT_CATALOGUE.features(protocol.key)
+
+    def _sources(self) -> tuple[ToolbarMode, ...]:
+        features = self.features()
+        return tuple(
+            mode
+            for mode, feature in (
+                (ToolbarMode.LIVE, Feature.LIVE_SOURCE),
+                (ToolbarMode.REPLAY, Feature.REPLAY_SOURCE),
+            )
+            if feature in features
+        )
+
+    def _on_protocol_changed(self) -> None:
+        """Keep the source if the new protocol offers it; skip the choice when only one."""
+        sources = self._sources()
+        if self._mode not in sources:
+            self._mode = None
+        if len(sources) == 1:
+            self._mode = sources[0]
+        self._check_mode_button()
         self._sync_toolbar()
+
+    def _check_mode_button(self) -> None:
+        # An exclusive group refuses to uncheck its last button, hence the toggle.
+        self._mode_group.setExclusive(False)
+        self.live_mode_button.setChecked(self._mode is ToolbarMode.LIVE)
+        self.replay_mode_button.setChecked(self._mode is ToolbarMode.REPLAY)
+        self._mode_group.setExclusive(True)
 
     def _create_action(self, icon: str, text: str, shortcut: str | None = None) -> QAction:
         """Build an icon-only action whose tooltip names it and its shortcut."""
@@ -275,10 +327,10 @@ class CaptureWindow(QMainWindow):
             action.setToolTip(f"{text} ({shortcut})")
         return action
 
-    def _toolbar_state(self) -> ToolbarState:
+    def _toolbar_state(self, mode: ToolbarMode) -> ToolbarState:
         """Snapshot the window state for the toolbar rules."""
         return ToolbarState(
-            mode=self._mode,
+            mode=mode,
             capturing=self._capturing,
             replay_loaded=self._replay.has_records,
             replay_playing=self._replay.is_playing,
@@ -286,8 +338,28 @@ class CaptureWindow(QMainWindow):
         )
 
     def _sync_toolbar(self) -> None:
-        """Show only the controls that apply to the current mode and state."""
-        state = self._toolbar_state()
+        """Show only the controls the chosen protocol and the current state make possible."""
+        features = self.features()
+        sources = self._sources()
+        self.live_mode_button.setVisible(len(sources) > 1)
+        self.replay_mode_button.setVisible(len(sources) > 1)
+        self._sync_statistics()
+        self.can_filter.setVisible(self._mode is not None and Feature.CAN_FILTER in features)
+        live = self._mode is ToolbarMode.LIVE
+        self.backend_settings.setVisible(Feature.CAN_BACKEND in features)
+        self.channel_settings.setVisible(Feature.CAN_CHANNEL in features)
+        self.live_settings.setVisible(
+            live and bool({Feature.CAN_BACKEND, Feature.CAN_CHANNEL} & features)
+        )
+        # Same rule as the source switch (#69): locked while a source feeds the view.
+        self.protocol_selector.setEnabled(
+            self._mode is None or can_switch_mode(self._toolbar_state(self._mode))
+        )
+        self.toolbar.setVisible(self._mode is not None)
+        if self._mode is None:
+            self.status_pill.setText("Choose source" if sources else "Choose protocol")
+            return
+        state = self._toolbar_state(self._mode)
         visible = visible_actions(state)
         controls = {
             ToolbarAction.PRIMARY: self.primary_action,
@@ -309,12 +381,6 @@ class CaptureWindow(QMainWindow):
         switchable = can_switch_mode(state)
         self.live_mode_button.setEnabled(switchable)
         self.replay_mode_button.setEnabled(switchable)
-        is_can = self.protocol_selector.selected.transport is Transport.CAN
-        live = self._mode is ToolbarMode.LIVE
-        self.protocol_selector.setVisible(live)
-        self.protocol_selector.setEnabled(not self._capturing)
-        self.live_settings.setVisible(live and is_can)
-        self.can_filter.setVisible(is_can)
         self.reset_replay_action.setVisible(self._mode is ToolbarMode.REPLAY)
         self.freeze_action.setChecked(self._display_paused)
         freeze_icon, freeze_text = (
@@ -340,28 +406,31 @@ class CaptureWindow(QMainWindow):
         return "Paused" if state.replay_active else "Loaded"
 
     def set_mode(self, mode: ToolbarMode) -> None:
-        """Switch between live capture and replay unless a source is running."""
-        if mode is not self._mode and can_switch_mode(self._toolbar_state()):
+        """Switch to ``mode`` if the protocol offers it and no source is running."""
+        running = self._mode is not None and not can_switch_mode(self._toolbar_state(self._mode))
+        if mode in self._sources() and not running:
             self._mode = mode
-        (
-            self.live_mode_button if self._mode is ToolbarMode.LIVE else self.replay_mode_button
-        ).setChecked(True)
+        self._check_mode_button()
         self._sync_toolbar()
 
     def switch_mode(self) -> None:
-        """Toggle to the other mode (Ctrl+Tab)."""
+        """Toggle to the other source (Ctrl+M); nothing to toggle before a first choice."""
+        if self._mode is None:
+            return
         other = ToolbarMode.REPLAY if self._mode is ToolbarMode.LIVE else ToolbarMode.LIVE
         self.set_mode(other)
 
     def trigger_primary(self) -> None:
-        """Run the primary toggle of the current state."""
+        """Run the primary toggle of the current state; inert before a source is chosen."""
+        if self._mode is None:
+            return
         dispatch = {
             PrimaryIntent.RECORD: self.start_capture,
             PrimaryIntent.STOP: self.stop_capture,
             PrimaryIntent.PLAY: self.play_replay,
             PrimaryIntent.PAUSE: self.pause_replay,
         }
-        dispatch[primary_intent(self._toolbar_state())]()
+        dispatch[primary_intent(self._toolbar_state(self._mode))]()
 
     def _on_space(self) -> None:
         """Trigger the primary toggle, unless a focused control owns Space.
@@ -389,13 +458,22 @@ class CaptureWindow(QMainWindow):
             )
         )
         self._preferences = preferences
-        visible = preferences.show_temporal_statistics
-        self.statistics_label.setVisible(visible)
-        self.statistics_list.setVisible(visible)
-        self.statistics_action.setVisible(visible)
+        visible = self._sync_statistics()
         self._render_display()
         if visible and statistics_changed:
             self.refresh_statistics()
+
+    def _sync_statistics(self) -> bool:
+        """Show statistics when the preference, the protocol and a chosen source allow it."""
+        visible = (
+            self._preferences.show_temporal_statistics
+            and self._mode is not None
+            and Feature.STATISTICS in self.features()
+        )
+        self.statistics_label.setVisible(visible)
+        self.statistics_list.setVisible(visible)
+        self.statistics_action.setVisible(visible)
+        return visible
 
     def selected_interface(self) -> CanInterface:
         """Backend chosen by the operator, defaulting to socketcan."""
@@ -414,7 +492,8 @@ class CaptureWindow(QMainWindow):
             self.channel_input.clear()
         self._hinted_interface = self.selected_interface()
         slcan = self.selected_interface() is CanInterface.SLCAN
-        self.unverified_silence_input.setEnabled(slcan)
+        # Only slcan cannot verify silence, so only slcan offers to accept it.
+        self.unverified_silence_input.setVisible(slcan)
         if not slcan:
             # socketcan is verifiable, so the acceptance has no meaning there and must
             # not survive as a stale tick that would later apply to slcan unnoticed.

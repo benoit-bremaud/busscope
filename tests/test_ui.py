@@ -4,6 +4,7 @@ import pytest
 from PySide6.QtCore import QCoreApplication, QSettings, Qt
 from PySide6.QtWidgets import QApplication
 
+from busscope import ui as ui_module
 from busscope.analysis import CapturedFrame, IdentifierStatistics, TemporalAnalyzer
 from busscope.app import create_application, create_capture_window
 from busscope.capture import CanInterface, CaptureConfiguration
@@ -14,6 +15,15 @@ from busscope.protocol import (
     ModuleRatings,
     ModuleState,
     SystemMeasurements,
+)
+from busscope.protocol_catalogue import (
+    DEFAULT_PROTOCOL_KEY,
+    Availability,
+    Feature,
+    Group,
+    Protocol,
+    ProtocolCatalogue,
+    Transport,
 )
 from busscope.settings_ui import SettingsWidget
 from busscope.toolbar import ToolbarMode
@@ -62,16 +72,21 @@ def create_test_window(
     controller: CaptureController,
     preferences: DisplayPreferences | None = None,
     transmitter: FakeTransmitter | None = None,
+    initial_protocol_key: str | None = DEFAULT_PROTOCOL_KEY,
 ) -> CaptureWindow:
     selected = preferences or DisplayPreferences.defaults()
     repository = MemoryPreferencesRepository(selected)
     transmission = TransmissionWidget(transmitter or FakeTransmitter())
-    return CaptureWindow(
+    window = CaptureWindow(
         controller,
         selected,
         SettingsWidget(selected, repository),
         transmission,
+        initial_protocol_key,
     )
+    if initial_protocol_key is not None:
+        window.set_mode(ToolbarMode.LIVE)
+    return window
 
 
 @pytest.fixture
@@ -723,10 +738,10 @@ def test_window_scopes_the_unverified_silence_acceptance_to_slcan(
     window = create_test_window(controller)
 
     # socketcan is verifiable, so accepting an unverifiable silence is meaningless there.
-    assert window.unverified_silence_input.isEnabled() is False
+    assert window.unverified_silence_input.isHidden() is True
 
     window.interface_input.setCurrentIndex(window.interface_input.findData(CanInterface.SLCAN))
-    assert window.unverified_silence_input.isEnabled() is True
+    assert window.unverified_silence_input.isHidden() is False
     window.unverified_silence_input.setChecked(True)
     window.channel_input.setText("/dev/serial/by-id/usb-CANable")
     window.start_capture()
@@ -1016,11 +1031,100 @@ def test_capture_tab_offers_protocol_catalogue_with_can_fields(
     del qt_application
     window = create_test_window(FakeController([]))
 
-    assert window.protocol_selector.selected.name == "CAN 2.0B"
+    selected = window.protocol_selector.selected
+    assert selected is not None
+    assert selected.name == "CAN 2.0B"
     assert window.protocol_selector.isEnabled()
     assert window.can_filter.isHidden() is False
     window.start_capture()
     assert window.protocol_selector.isEnabled() is False
     window.stop_capture()
     window.set_mode(ToolbarMode.REPLAY)
-    assert window.protocol_selector.isHidden()
+    assert window.protocol_selector.isHidden() is False
+    assert window.live_settings.isHidden()
+    assert window.can_filter.isHidden() is False
+
+
+def _visible_capture_controls(window: CaptureWindow) -> dict[str, bool]:
+    return {
+        "modes": not window.live_mode_button.isHidden(),
+        "live_settings": not window.live_settings.isHidden(),
+        "filter": not window.can_filter.isHidden(),
+        "statistics": not window.statistics_list.isHidden(),
+        "toolbar": not window.toolbar.isHidden(),
+    }
+
+
+def test_capture_tab_starts_with_only_the_protocol_picker(qt_application: QApplication) -> None:
+    del qt_application
+    controller = FakeController([])
+    window = create_test_window(controller, initial_protocol_key=None)
+
+    assert window.protocol_selector.selected is None
+    assert not any(_visible_capture_controls(window).values())
+    assert window.status_pill.text() == "Choose protocol"
+    assert window.listen_only_label.isHidden() is False
+    assert window.listen_only_icon.isHidden() is False
+    # Space and Ctrl+M have nothing to act on yet.
+    window.trigger_primary()
+    window.switch_mode()
+    assert controller.configurations == []
+
+
+def test_controls_appear_as_protocol_then_source_are_chosen(
+    qt_application: QApplication,
+) -> None:
+    del qt_application
+    window = create_test_window(FakeController([]), initial_protocol_key=None)
+
+    window.protocol_selector.choose(window.protocol_selector.item("infypower"))
+    assert _visible_capture_controls(window) == {
+        "modes": True,
+        "live_settings": False,
+        "filter": False,
+        "statistics": False,
+        "toolbar": False,
+    }
+    assert window.live_mode_button.isChecked() is False
+    assert window.status_pill.text() == "Choose source"
+
+    window.set_mode(ToolbarMode.LIVE)
+    assert all(_visible_capture_controls(window).values())
+    assert window.status_pill.text() == "Idle"
+
+    # Changing to another protocol offering the same source keeps it.
+    window.protocol_selector.choose(window.protocol_selector.item(DEFAULT_PROTOCOL_KEY))
+    assert window.live_mode_button.isChecked()
+
+
+def test_single_source_protocol_skips_the_source_choice(
+    qt_application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    del qt_application
+    replay_only = Protocol("log", "Log", "", Transport.LOGIC, Availability.AVAILABLE)
+    live_only = Protocol("bus", "Bus", "", Transport.CAN, Availability.AVAILABLE)
+    catalogue = ProtocolCatalogue(
+        Group(
+            "root",
+            "Root",
+            (
+                Group("files", "Files", (replay_only,), adds=frozenset({Feature.REPLAY_SOURCE})),
+                Group("wires", "Wires", (live_only,), adds=frozenset({Feature.LIVE_SOURCE})),
+            ),
+        )
+    )
+    monkeypatch.setattr(ui_module, "DEFAULT_CATALOGUE", catalogue)
+    window = create_test_window(FakeController([]), initial_protocol_key=None)
+
+    window.protocol_selector.choose(window.protocol_selector.item("log"))
+    assert window.replay_mode_button.isChecked()
+    assert window.replay_mode_button.isHidden()
+    assert window.toolbar.isHidden() is False
+    assert window.statistics_list.isHidden()
+
+    # A source the new protocol lacks is dropped, then the only remaining one is taken.
+    window.protocol_selector.choose(window.protocol_selector.item("bus"))
+    assert window.live_mode_button.isChecked()
+    window.set_mode(ToolbarMode.REPLAY)
+    assert window.live_mode_button.isChecked()
+    assert window.live_settings.isHidden()
