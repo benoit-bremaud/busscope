@@ -1,9 +1,18 @@
-"""Searchable family / sub-family / protocol tree for the capture tab."""
+"""Compact protocol picker: a button that opens a searchable family / sub-family tree."""
 
 from __future__ import annotations
 
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtWidgets import QLineEdit, QTreeWidget, QTreeWidgetItem, QVBoxLayout, QWidget
+from PySide6.QtWidgets import (
+    QFrame,
+    QHBoxLayout,
+    QLineEdit,
+    QPushButton,
+    QTreeWidget,
+    QTreeWidgetItem,
+    QVBoxLayout,
+    QWidget,
+)
 
 from busscope.protocol_catalogue import Availability, Protocol, ProtocolCatalogue
 
@@ -14,6 +23,8 @@ class ProtocolSelector(QWidget):
     """Let the operator find and pick an available protocol; planned ones stay disabled."""
 
     protocol_changed = Signal(object)
+    _POPUP_WIDTH = 420
+    _POPUP_HEIGHT = 320
 
     def __init__(self, catalogue: ProtocolCatalogue, selected_key: str) -> None:
         """Build the tree from ``catalogue`` and select ``selected_key``."""
@@ -31,17 +42,43 @@ class ProtocolSelector(QWidget):
         self._items: dict[str, QTreeWidgetItem] = {}
         self._groups: list[tuple[QTreeWidgetItem, list[QTreeWidgetItem]]] = []
         self._populate()
-        layout = QVBoxLayout(self)
+        # The tree lives in a popup (PulseView / PCAN-View style) so the frame list keeps
+        # the vertical space; the button shows the current choice.
+        self.button = QPushButton()
+        self.button.setAccessibleName("Protocol")
+        self.button.setToolTip("Choose the protocol to capture")
+        self.popup = QFrame(self, Qt.WindowType.Popup)
+        self.popup.setFrameShape(QFrame.Shape.StyledPanel)
+        popup_layout = QVBoxLayout(self.popup)
+        popup_layout.addWidget(self.search_input)
+        popup_layout.addWidget(self.tree)
+        self.popup.resize(self._POPUP_WIDTH, self._POPUP_HEIGHT)
+        layout = QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.addWidget(self.search_input)
-        layout.addWidget(self.tree)
+        layout.addWidget(self.button)
+        layout.addStretch()
+        self._update_button()
+        self.button.clicked.connect(self.open_popup)
         self.search_input.textChanged.connect(self.filter)
-        self.tree.currentItemChanged.connect(self._on_current_changed)
+        # Choose on click or Enter only: arrow keys and live search just move the cursor.
+        self.tree.itemClicked.connect(self.choose)
+        self.tree.itemActivated.connect(self.choose)
 
     @property
     def selected(self) -> Protocol:
         """Return the protocol currently chosen for capture."""
         return self._selected
+
+    def open_popup(self) -> None:
+        """Show the searchable catalogue under the button, search field focused."""
+        self.popup.move(self.button.mapToGlobal(self.button.rect().bottomLeft()))
+        self.search_input.clear()
+        self.tree.setCurrentItem(self._items[self._selected.key])
+        self.popup.show()
+        self.search_input.setFocus()
+
+    def _update_button(self) -> None:
+        self.button.setText(f"Protocol: {self._selected.name} \u25be")
 
     def filter(self, text: str) -> None:
         """Hide protocols not matching ``text`` and groups left empty."""
@@ -86,7 +123,11 @@ class ProtocolSelector(QWidget):
             item.setDisabled(True)
         return item
 
-    def _on_current_changed(self, current: QTreeWidgetItem | None) -> None:
+    def choose(self, current: QTreeWidgetItem | None, _column: int = 0) -> None:
+        """Select the protocol shown by ``current`` and close the popup.
+
+        Group rows and planned protocols are ignored and leave the popup open.
+        """
         if current is None or current.isDisabled():
             return
         key = current.data(0, _KEY_ROLE)
@@ -95,4 +136,6 @@ class ProtocolSelector(QWidget):
         protocol = self._catalogue.get(key)
         if protocol != self._selected:
             self._selected = protocol
+            self._update_button()
             self.protocol_changed.emit(protocol)
+        self.popup.hide()

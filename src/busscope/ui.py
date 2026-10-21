@@ -82,7 +82,6 @@ class CaptureWindow(QMainWindow):
 
     _MAX_FRAMES_PER_TICK = 100
     _MAX_DISPLAYED_FRAMES = 10_000
-    _PROTOCOL_SELECTOR_MAX_HEIGHT = 160
 
     def __init__(
         self,
@@ -204,7 +203,6 @@ class CaptureWindow(QMainWindow):
         can_filter_layout.addWidget(self.filter_input)
         # Source and protocol come first; transport-specific fields follow the choice.
         self.protocol_selector = ProtocolSelector(DEFAULT_CATALOGUE, DEFAULT_PROTOCOL_KEY)
-        self.protocol_selector.setMaximumHeight(self._PROTOCOL_SELECTOR_MAX_HEIGHT)
         controls = QHBoxLayout()
         controls.addWidget(self.live_mode_button)
         controls.addWidget(self.replay_mode_button)

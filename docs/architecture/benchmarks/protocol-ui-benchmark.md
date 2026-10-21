@@ -46,12 +46,28 @@ tools and are **[est.]** until we have the actual binary.
 **Borrow:** saved connection profiles per transport; tabular view of decoded values.
 **Avoid:** anything that polls or writes — BusScope is listen-only (ADR-0002).
 
+## CAN-specific tools (added after the #72 critical review)
+
+| Tool | Observation | Level |
+|---|---|---|
+| SavvyCAN | *Connection window* lists devices per driver; each bus enabled with its own bitrate (multi-bus). Main view toggles: auto-scroll, **overwrite mode** (one line per ID, latest frame), interpret frames (DBC), frame filtering by ID. | verified ([CSS Electronics guide](https://canlogger.csselectronics.com/canmod-intro/software-tools/savvycan), [man page](https://dyn.manpages.debian.org/unstable/savvycan/SavvyCAN.1)) |
+| PCAN-View | **Connect dialog** = interface + bitrate + **listen-only checkbox** in one place; sortable receive list, hex/decimal IDs. | verified ([PEAK product page](https://www.peak-system.com/products/software/analysis-software/pcan-view/?L=1)) |
+| Saleae Logic 2 | Analyzers added from a "+" in a side panel; one **data table** of all decoded analyzers, searchable, with per-analyzer exclusion. | data table verified ([Saleae guide](https://support.saleae.com/user-guide/using-logic/data-table-and-terminal)); "+" flow est. |
+
+**Borrow:** compact source + protocol picker that opens on demand (PCAN-View connect, PulseView
+decoder popup) instead of a permanent tree; overwrite mode per ID (SavvyCAN) as a follow-up;
+one searchable decoded-data table across protocols (Saleae).
+**Avoid:** transmit lists and periodic sending (PCAN-View) — out of scope, listen-only.
+
+Screenshots: not embedded (third-party copyright); see the linked official pages.
+
 ## Synthesis for BusScope
 
 1. **Source → protocol → transport settings**, in that order (wireframe in
    `diagrams/protocol-catalogue/03-wireframe.md`).
 2. **Grouped + searchable catalogue** (families → sub-families → protocols), PulseView search
-   on top of a Wireshark-like hierarchy.
+   on top of a Wireshark-like hierarchy, opened from a **compact picker button** so the frame
+   list keeps the space.
 3. Transport-specific fields (bitrate, CAN-ID filter, baud/parity…) appear **only** for the
    selected transport.
 4. Every protocol carries an availability status (*available* / *planned*) so the catalogue

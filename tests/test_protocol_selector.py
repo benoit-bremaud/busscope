@@ -48,8 +48,7 @@ def test_selecting_available_protocol_emits_change(qt_application: QApplication)
     received: list[Protocol] = []
     selector.protocol_changed.connect(received.append)
 
-    serial = selector.item("rtu")
-    selector.tree.setCurrentItem(serial)
+    selector.choose(selector.item("rtu"))
 
     assert received == [_RTU]
     assert selector.selected is _RTU
@@ -69,9 +68,9 @@ def test_group_and_planned_items_do_not_change_selection(qt_application: QApplic
     received: list[Protocol] = []
     selector.protocol_changed.connect(received.append)
 
-    selector.tree.setCurrentItem(_parent(_parent(selector.item("rtu"))))  # family row
-    selector._on_current_changed(selector.item("j1939"))
-    selector._on_current_changed(None)
+    selector.choose(_parent(_parent(selector.item("rtu"))))  # family row
+    selector.choose(selector.item("j1939"))
+    selector.choose(None)
 
     assert received == []
     assert selector.selected is _CAN
@@ -97,3 +96,33 @@ def test_selector_refuses_a_planned_protocol_as_initial_choice(
 ) -> None:
     with pytest.raises(ValueError, match="cannot be captured"):
         ProtocolSelector(_CATALOGUE, "j1939")
+
+
+def test_button_names_selection_and_popup_closes_after_pick(
+    qt_application: QApplication,
+) -> None:
+    selector = ProtocolSelector(_CATALOGUE, "can")
+    assert selector.button.text() == "Protocol: CAN \u25be"
+
+    selector.button.click()
+    assert selector.popup.isVisible()
+    selector.choose(selector.item("rtu"))
+
+    assert selector.popup.isHidden()
+    assert selector.button.text() == "Protocol: Modbus RTU \u25be"
+
+
+def test_browsing_or_picking_planned_keeps_popup_open(qt_application: QApplication) -> None:
+    selector = ProtocolSelector(_CATALOGUE, "can")
+    selector.search_input.setText("modbus")
+    selector.open_popup()
+
+    assert selector.search_input.text() == ""
+    assert selector.tree.currentItem() is selector.item("can")
+    selector.tree.setCurrentItem(selector.item("rtu"))  # arrow-key style move
+    selector.choose(selector.item("j1939"))
+
+    assert selector.popup.isVisible()
+    assert selector.selected is _CAN
+    selector.choose(selector.item("can"))  # re-picking current closes too
+    assert selector.popup.isHidden()
