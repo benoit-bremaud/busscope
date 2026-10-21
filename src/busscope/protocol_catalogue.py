@@ -316,6 +316,8 @@ DEFAULT_CATALOGUE = ProtocolCatalogue(
                                 "DC charging dialogue over CAN.",
                                 _CAN,
                                 carried_by=DEFAULT_PROTOCOL_KEY,
+                                # Filed under EV charging, so the CAN group cannot grant these.
+                                adds=_CAN_FEATURES,
                             ),
                         ),
                     ),

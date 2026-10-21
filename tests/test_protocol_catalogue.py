@@ -152,3 +152,14 @@ def test_unknown_key_has_no_path_or_features() -> None:
         DEFAULT_CATALOGUE.path("nope")
     with pytest.raises(KeyError):
         DEFAULT_CATALOGUE.features("nope")
+
+
+def test_every_can_protocol_resolves_the_can_settings_wherever_it_is_filed() -> None:
+    can_settings = {Feature.CAN_BACKEND, Feature.CAN_CHANNEL, Feature.CAN_FILTER}
+    for protocol in DEFAULT_CATALOGUE.protocols():
+        resolved: frozenset[Feature] = frozenset()
+        for node in DEFAULT_CATALOGUE.path(protocol.key):
+            resolved = (resolved | node.adds) - node.removes
+        assert (protocol.transport is Transport.CAN) == can_settings.issubset(resolved), (
+            protocol.key
+        )
