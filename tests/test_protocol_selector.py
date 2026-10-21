@@ -90,3 +90,10 @@ def test_search_hides_non_matching_protocols_and_empty_groups(
     selector.search_input.setText("")
     assert not selector.item("j1939").isHidden()
     assert not _parent(selector.item("can")).isHidden()
+
+
+def test_selector_refuses_a_planned_protocol_as_initial_choice(
+    qt_application: QApplication,
+) -> None:
+    with pytest.raises(ValueError, match="cannot be captured"):
+        ProtocolSelector(_CATALOGUE, "j1939")

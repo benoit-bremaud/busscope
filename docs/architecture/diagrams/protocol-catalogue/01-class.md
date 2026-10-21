@@ -22,11 +22,12 @@ classDiagram
     class Family {
         +key: str
         +name: str
+        +sub_families: tuple[SubFamily, ...]
     }
     class SubFamily {
         +key: str
         +name: str
-        +family: Family
+        +protocols: tuple[Protocol, ...]
     }
     class Protocol {
         +key: str
@@ -36,11 +37,11 @@ classDiagram
         +availability: Availability
         +carried_by: str | None
         +keywords: tuple[str, ...]
+        +matches(text) bool
     }
     class ProtocolCatalogue {
-        +families() tuple[Family, ...]
-        +sub_families(family_key) tuple[SubFamily, ...]
-        +protocols(sub_family_key) tuple[Protocol, ...]
+        +families: tuple[Family, ...]
+        +protocols() tuple[Protocol, ...]
         +get(protocol_key) Protocol
         +search(text) tuple[Protocol, ...]
         +to_dict() dict

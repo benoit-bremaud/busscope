@@ -20,6 +20,8 @@ class ProtocolSelector(QWidget):
         super().__init__()
         self._catalogue = catalogue
         self._selected = catalogue.get(selected_key)
+        if self._selected.availability is not Availability.AVAILABLE:
+            raise ValueError(f"{selected_key} cannot be captured yet")
         self.search_input = QLineEdit()
         self.search_input.setPlaceholderText("Search protocols")
         self.search_input.setAccessibleName("Protocol search")
@@ -85,8 +87,10 @@ class ProtocolSelector(QWidget):
         return item
 
     def _on_current_changed(self, current: QTreeWidgetItem | None) -> None:
-        key = current.data(0, _KEY_ROLE) if current is not None else None
-        if not isinstance(key, str) or current is None or current.isDisabled():
+        if current is None or current.isDisabled():
+            return
+        key = current.data(0, _KEY_ROLE)
+        if not isinstance(key, str):
             return
         protocol = self._catalogue.get(key)
         if protocol != self._selected:

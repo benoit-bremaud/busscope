@@ -43,6 +43,8 @@ class Protocol:
     def matches(self, text: str) -> bool:
         """Return whether ``text`` occurs in the name, description or keywords."""
         needle = text.strip().casefold()
+        if not needle:
+            return True
         haystack = (self.name, self.description, *self.keywords)
         return any(needle in value.casefold() for value in haystack)
 
