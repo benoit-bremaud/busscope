@@ -286,7 +286,9 @@ class CaptureWindow(QMainWindow):
         return widget
 
     def captured_frames(self) -> tuple[CapturedFrame, ...]:
-        """Frames captured or loaded so far, for read-only consumers such as the AI tab."""
+        """Frames captured, or the whole loaded replay, for read-only consumers (AI tab)."""
+        if self._mode is ToolbarMode.REPLAY and self._replay.has_records:
+            return self._replay.records
         return tuple(self._records)
 
     def features(self) -> frozenset[Feature]:

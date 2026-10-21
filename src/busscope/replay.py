@@ -123,6 +123,11 @@ class ReplayController:
         return self._playing
 
     @property
+    def records(self) -> tuple[CapturedFrame, ...]:
+        """The whole loaded capture, independent of playback progress."""
+        return self._records
+
+    @property
     def has_records(self) -> bool:
         """Return whether a capture has been loaded for replay."""
         return bool(self._records)

@@ -197,6 +197,32 @@ def test_window_loads_and_replays_csv_capture(
     assert window.frame_list.count() == 0
 
 
+def test_captured_frames_exposes_the_whole_loaded_replay(
+    qt_application: QApplication,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    del qt_application
+    source = tmp_path / "capture.csv"
+    source.write_text(
+        "timestamp_seconds,arbitration_id,is_extended_id,is_error_frame,data,description,"
+        "decoded_values,diagnostics\n"
+        "0.000000,0x0284F001,true,false,00 00 02 00 1B 00 40 00,Stored,Group=99,\n"
+        "1.000000,0x0284F001,true,false,00 00 02 00 1B 00 40 00,Stored,Group=99,\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        "busscope.ui.QFileDialog.getOpenFileName",
+        lambda *args: (str(source), "CSV files (*.csv)"),
+    )
+    window = create_test_window(FakeController([]))
+    window.set_mode(ToolbarMode.REPLAY)
+    window.load_replay()
+    assert len(window.captured_frames()) == 2  # before any playback
+    window.set_mode(ToolbarMode.LIVE)
+    assert window.captured_frames() == ()
+
+
 def test_window_load_replay_resets_display_pause(
     qt_application: QApplication,
     monkeypatch: pytest.MonkeyPatch,

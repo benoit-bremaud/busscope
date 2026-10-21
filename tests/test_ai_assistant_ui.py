@@ -454,3 +454,16 @@ def test_keyring_failure_is_cached_as_no_key(qt_application: QApplication, tmp_p
         widget.refresh()
     assert BrokenCounting.reads == 1
     assert widget.key_state.text() == "No key stored"
+
+
+def test_editing_the_model_drops_a_reply_in_flight(
+    qt_application: QApplication, tmp_path: Path
+) -> None:
+    del qt_application
+    harness = DeferredHarness(tmp_path, FakeKeys({"anthropic": ANTHROPIC_KEY}), FakeProvider())
+    widget = harness.widget()
+    widget.test_connection()
+    widget.model_input.textEdited.emit("other-model")
+    assert widget.test_button.isEnabled()
+    harness.pending[0]()
+    assert widget.status_label.text() == "Testing…"

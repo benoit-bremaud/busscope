@@ -210,8 +210,8 @@ class AssistantWidget(QWidget):
         self.model_input.editingFinished.connect(self._save_choices)
         self.endpoint_input.editingFinished.connect(self._save_choices)
         # A preview is only valid for the model and destination it was built for.
-        self.model_input.textEdited.connect(lambda _text: self._reset_preview())
-        self.endpoint_input.textEdited.connect(lambda _text: self._reset_preview())
+        self.model_input.textEdited.connect(lambda _text: self._on_setup_edited())
+        self.endpoint_input.textEdited.connect(lambda _text: self._on_setup_edited())
         self.key_input.textChanged.connect(self._on_key_typed)
         self.save_key_button.clicked.connect(self.save_key)
         self.forget_key_button.clicked.connect(self.forget_key)
@@ -273,6 +273,13 @@ class AssistantWidget(QWidget):
         self.test_button.setEnabled(True)
         self._save_choices()
         self.refresh()
+
+    def _on_setup_edited(self) -> None:
+        """A new model or endpoint: drop the preview and any reply still in flight."""
+        self._generation += 1
+        self.send_button.setEnabled(True)
+        self.test_button.setEnabled(True)
+        self._reset_preview()
 
     def _save_choices(self) -> None:
         """Persist non-secret choices; the key is never written here."""

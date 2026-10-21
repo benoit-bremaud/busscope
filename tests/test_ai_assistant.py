@@ -132,6 +132,12 @@ def test_redaction_masks_undecoded_payloads_but_keeps_decoded_ones() -> None:
     assert "0x123" not in lines[2]
 
 
+def test_malformed_payload_of_a_decoded_command_stays_masked() -> None:
+    frames = [captured(infypower_id(0x03, 0x01, 0x02), b"\xde\xad\xbe", 0.0)]
+    line = Redactor().redact(frames, RedactionOptions())
+    assert "<3 bytes masked>" in line and "DE AD" not in line
+
+
 def test_redaction_can_be_disabled() -> None:
     frames = [captured(infypower_id(0x0B, 0x3F, 0x05), b"\xaa" * 8, 12.5)]
     options = RedactionOptions(

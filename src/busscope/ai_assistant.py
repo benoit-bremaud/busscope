@@ -14,6 +14,7 @@ from typing import Protocol
 from urllib.parse import urlsplit
 
 from busscope.analysis import CapturedFrame
+from busscope.protocol import DecodeResult
 
 #: Infypower commands whose payload busscope decodes into measurements or state. Any other
 #: payload is unknown to us and may carry identity data (serial numbers), so it is masked.
@@ -27,6 +28,22 @@ SYSTEM_PROMPT = (
     "(M1, M2...). Answer in plain text, state your uncertainty, and never suggest "
     "transmitting frames on a live charger bus."
 )
+
+
+def _payload_decoded(result: DecodeResult) -> bool:
+    """True when the decoder actually parsed the payload (a malformed one stays masked)."""
+    parsed = (
+        result.module_state,
+        result.ambient_temperature_celsius,
+        result.system_measurements,
+        result.module_measurements,
+        result.ac_input_measurements,
+        result.module_ratings,
+        result.module_availability,
+        result.module_count,
+        result.module_group_number,
+    )
+    return any(value is not None for value in parsed)
 
 
 class ProviderError(RuntimeError):
@@ -185,7 +202,9 @@ class Redactor:
                 f"dst={address(identifier.destination_address)} "
                 f"src={address(identifier.source_address)}"
             )
-            decoded = identifier.command_number in DECODED_COMMANDS
+            decoded = identifier.command_number in DECODED_COMMANDS and _payload_decoded(
+                record.result
+            )
         if options.mask_undecoded_payloads and not decoded:
             payload = f"<{len(frame.data)} bytes masked>"
         else:

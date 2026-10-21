@@ -150,3 +150,13 @@ ordinary commits from that PR's branch.
   checkbox` (`fix/84-wrap-status-message`, closes #84). Long status messages wrap instead of
   widening the window. Codex P1 fixed in `e2319a0`: never recommend `slcand -l` for a live bus —
   only verified native SocketCAN interfaces are suggested for live capture.
+- **PR #98 in review** — `feat(ai): multi-provider AI diagnosis assistant` (`feat/83-ai-assistant`,
+  closes #83). New "AI assistant" tab: Anthropic (default `claude-opus-5-5`), OpenAI, Mistral,
+  Google and local OpenAI-compatible models through stdlib HTTP adapters behind a Qt-free
+  `LlmProvider` port; API key only in the OS keyring (`busscope-ai`); every send is previewed
+  (redacted: pseudonymised addresses, relative time, payloads masked unless actually decoded) and
+  confirmed. TLS required off-PC, no redirects, proxies bypassed for loopback. Two Opus critical
+  reviews (7 + 8 fixes, `841939c`, `2939ede`); Codex P1/P2 fixed after them (malformed payloads
+  stay masked, the whole loaded replay is exposed to the assistant, replies in flight are dropped
+  on any provider/model/endpoint change). Gate: 383 tests, 99 % coverage, SonarQube PASSED. Note:
+  the non-Anthropic wire formats come from public docs (Context7 quota was exhausted).
