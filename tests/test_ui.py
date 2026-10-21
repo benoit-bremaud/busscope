@@ -1132,3 +1132,10 @@ def test_single_source_protocol_skips_the_source_choice(
     window.set_mode(ToolbarMode.REPLAY)
     assert window.live_mode_button.isChecked()
     assert window.live_settings.isHidden()
+
+
+def test_status_messages_wrap_to_the_window_width(qt_application: QApplication) -> None:
+    del qt_application
+    window = create_test_window(FakeController([]))
+
+    assert window.status_label.wordWrap() is True

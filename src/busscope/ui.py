@@ -184,6 +184,8 @@ class CaptureWindow(QMainWindow):
         overflow_menu.addAction(self.reset_replay_action)
         self.overflow_button.setMenu(overflow_menu)
         self.status_label = QLabel("Ready")
+        # Refusal messages are long; wrap them to the window instead of widening it.
+        self.status_label.setWordWrap(True)
         self.frame_list = QListWidget()
         self.frame_list.setAccessibleName("Captured CAN frames")
         self.statistics_list = QListWidget()
