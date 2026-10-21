@@ -68,7 +68,9 @@ class ProtocolSelector(QWidget):
                 sub_items.append(sub_item)
             self._groups.append((family_item, sub_items))
         self.tree.expandAll()
+        self.tree.resizeColumnToContents(0)
         self.tree.setCurrentItem(self._items[self._selected.key])
+        self.tree.scrollToItem(self._items[self._selected.key])
 
     @staticmethod
     def _protocol_item(parent: QTreeWidgetItem, protocol: Protocol) -> QTreeWidgetItem:
