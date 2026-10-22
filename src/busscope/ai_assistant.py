@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import ipaddress
 import re
+from collections import deque
 from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass
 from typing import Protocol
@@ -176,7 +177,8 @@ class Redactor:
 
     def redact(self, frames: Iterable[CapturedFrame], options: RedactionOptions) -> str:
         """Render at most ``options.max_frames`` most recent frames, one per line."""
-        selected = list(frames)[-options.max_frames :] if options.max_frames > 0 else []
+        # A bounded deque keeps only the tail: a long capture is never copied whole.
+        selected = list(deque(frames, maxlen=options.max_frames)) if options.max_frames > 0 else []
         if not selected:
             return "(no frames)"
         origin = selected[0].timestamp_seconds if options.relative_time else 0.0

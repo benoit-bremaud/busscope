@@ -314,8 +314,9 @@ class AssistantWidget(QWidget):
         self._reset_preview()
 
     def _invalidate_pending(self) -> None:
-        """Drop in-flight replies and the last answer: they belong to the old setup."""
+        """Drop in-flight replies, the last answer and its status: they belong to the old setup."""
         self._generation += 1
+        self.status_label.clear()
         self.answer.clear()
         self.answer.setVisible(False)
         self.send_button.setEnabled(True)

@@ -244,3 +244,10 @@ def test_missing_key_is_reported_without_calling_provider() -> None:
 def test_missing_adapter_is_reported() -> None:
     with pytest.raises(ProviderError, match="No adapter"):
         DiagnosisService({}, FakeKeys()).test_connection(provider_by_id("local"), "")
+
+
+def test_redaction_consumes_a_one_shot_iterable_keeping_only_the_tail() -> None:
+    frames = (captured(infypower_id(0x03, 0x01, 0x02), bytes(8), float(i)) for i in range(500))
+    lines = Redactor().redact(frames, RedactionOptions(max_frames=3)).splitlines()
+    assert len(lines) == 3
+    assert lines[-1].startswith("t=+2.000s")

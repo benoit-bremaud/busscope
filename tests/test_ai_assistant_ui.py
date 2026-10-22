@@ -498,7 +498,7 @@ def test_editing_the_model_drops_a_reply_in_flight(
     widget.model_input.textEdited.emit("other-model")
     assert widget.test_button.isEnabled()
     harness.pending[0]()
-    assert widget.status_label.text() == "Testing…"
+    assert widget.status_label.text() == ""
 
 
 def test_controls_appear_only_once_the_previous_step_makes_them_useful(
@@ -613,3 +613,16 @@ def test_changing_a_privacy_option_voids_the_preview(
     assert widget.send_button.isHidden()
     widget.send()
     assert harness.provider.prompts == []
+
+
+def test_invalidation_clears_a_waiting_status(qt_application: QApplication, tmp_path: Path) -> None:
+    del qt_application
+    harness = DeferredHarness(tmp_path, FakeKeys({"anthropic": ANTHROPIC_KEY}), FakeProvider())
+    harness.frames.append(frame())
+    widget = harness.widget()
+    widget.question_input.setPlainText("why?")
+    widget.prepare()
+    widget.send()
+    assert widget.status_label.text() == "Waiting for the answer…"
+    widget.question_input.setPlainText("other?")
+    assert widget.status_label.isHidden()
