@@ -150,17 +150,18 @@ ordinary commits from that PR's branch.
   checkbox` (`fix/84-wrap-status-message`, closes #84). Long status messages wrap instead of
   widening the window. Codex P1 fixed in `e2319a0`: never recommend `slcand -l` for a live bus —
   only verified native SocketCAN interfaces are suggested for live capture.
-- **PR #98 `19ee464`** — `feat(ai): multi-provider AI diagnosis assistant` (`feat/83-ai-assistant`,
-  closes #83, merged 2026-10-22). New "AI assistant" tab: Anthropic (default `claude-opus-5-5`),
-  OpenAI, Mistral, Google and local OpenAI-compatible models through stdlib HTTP adapters behind a
-  Qt-free `LlmProvider` port; API key only in the OS keyring (`busscope-ai`); every send is
-  previewed (redacted: pseudonymised addresses, relative time, payloads masked unless actually
-  decoded) and confirmed. TLS required off-PC, no redirects, proxies bypassed for loopback.
-  Review: two Opus critical reviews (7 + 8 fixes, `841939c`, `2939ede`), then nine Codex rounds
-  (1 P1 + ~20 P2, all fixed). Main outcomes: no raw payload bytes are sent when masking is on;
-  explicit capture identity (`CaptureWindow.capture_generation` + `capture_changed`) so the
-  assistant sees only the current source's records; the keyring is read only on the tab's first
-  show, never at startup or from a capture change while the tab is hidden; context-window
-  truncation is flagged and every Gemini text part is read; progressive-disclosure UI. Final gate
-  on `7821429`: 416 tests, coverage 98.9 %, interrogate 96.1 %, SonarQube PASSED. Note: the
-  non-Anthropic wire formats come from public docs (Context7 quota was exhausted). Next: #99, #95.
+- **PR #98 merged** (`19ee464`) — `feat(ai): multi-provider AI diagnosis assistant`
+  (`feat/83-ai-assistant`, closes #83, merged 2026-10-22). New "AI assistant" tab: Anthropic
+  (default `claude-opus-5-5`), OpenAI, Mistral, Google and local OpenAI-compatible models through
+  stdlib HTTP adapters behind a Qt-free `LlmProvider` port; API key only in the OS keyring
+  (`busscope-ai`); every send is previewed (redacted: pseudonymised addresses, relative time,
+  payloads masked unless actually decoded) and confirmed. TLS required off-PC, no redirects,
+  proxies bypassed for loopback. Review: two Opus critical reviews (7 + 8 fixes, `841939c`,
+  `2939ede`), then nine Codex rounds (1 P1 + ~20 P2, all fixed). Main outcomes: no raw payload
+  bytes are sent when masking is on; explicit capture identity (`CaptureWindow.capture_generation`
+  + `capture_changed`) so the assistant sees only the current source's records; the keyring is
+  read only on the tab's first show, never at startup or from a capture change while the tab is
+  hidden; context-window truncation is flagged and every Gemini text part is read;
+  progressive-disclosure UI. Final gate on `7821429`: 416 tests, coverage 98.9 %, interrogate
+  96.1 %, SonarQube PASSED. Note: the non-Anthropic wire formats come from public docs (Context7
+  quota was exhausted). Next: #99, #95.
