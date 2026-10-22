@@ -160,3 +160,6 @@ ordinary commits from that PR's branch.
   stay masked, the whole loaded replay is exposed to the assistant, replies in flight are dropped
   on any provider/model/endpoint change). Gate: 383 tests, 99 % coverage, SonarQube PASSED. Note:
   the non-Anthropic wire formats come from public docs (Context7 quota was exhausted).
+  Paused 2026-10-22 at `0c2455e`: CI all green, the three Codex threads answered and resolved.
+  To resume: wait for the Codex re-review, answer any new comment inline, ask the owner for merge
+  approval, then post-merge cleanup and replace this entry with the merge SHA. Next: #99, #95.
