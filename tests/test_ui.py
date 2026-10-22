@@ -14,6 +14,7 @@ from busscope.protocol import (
     DecodeResult,
     ModuleRatings,
     ModuleState,
+    ProtocolDecoder,
     SystemMeasurements,
 )
 from busscope.protocol_catalogue import (
@@ -1192,3 +1193,36 @@ def test_capture_changed_fires_on_source_changes_and_on_the_first_frame(
     assert seen == [start + 1, start + 2]
     window.reset_replay()
     assert seen == [start + 1, start + 2, start + 3]
+
+
+def test_captured_frames_excludes_records_of_the_previous_source(
+    qt_application: QApplication, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    del qt_application
+    source = tmp_path / "capture.csv"
+    source.write_text(
+        "timestamp_seconds,arbitration_id,is_extended_id,is_error_frame,data,description,"
+        "decoded_values,diagnostics\n"
+        "0.000000,0x0284F001,true,false,00 00 02 00 1B 00 40 00,Stored,Group=99,\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        "busscope.ui.QFileDialog.getOpenFileName",
+        lambda *args: (str(source), "CSV files (*.csv)"),
+    )
+    clock = iter([10.0, 10.0])
+    monkeypatch.setattr("busscope.ui.time.monotonic", lambda: next(clock))
+    window = create_test_window(FakeController([]))
+    window.set_mode(ToolbarMode.REPLAY)
+    window.load_replay()
+    window.play_replay()
+    window._advance_replay()
+    window.pause_replay()
+    assert len(window.captured_frames()) == 1
+    changes: list[int] = []
+    window.capture_changed.connect(lambda: changes.append(len(window.captured_frames())))
+    window.set_mode(ToolbarMode.LIVE)
+    assert window.captured_frames() == ()  # the replayed frame still shows, but is not live
+    window._append_record(CapturedFrame(0.5, ProtocolDecoder().decode(CanFrame(0x123, b""))))
+    assert len(window.captured_frames()) == 1
+    assert changes == [0, 1]  # mode switch, then the first live frame

@@ -22,12 +22,14 @@ from busscope.protocol import DecodeResult, format_decoded_values
 DECODED_COMMANDS = frozenset({0x01, 0x02, 0x03, 0x04, 0x06, 0x0A, 0x0C})
 _BROADCAST_ADDRESS = 0xFF
 
-SYSTEM_PROMPT = (
+_SYSTEM_PROMPT_HEAD = (
     "You are a CAN bus diagnosis assistant for EV-charger power modules (Infypower "
     "protocol, CAN 2.0B extended frames at 125 kbit/s). The operator gives you a "
-    "listen-only capture excerpt and a question. Module addresses are pseudonymised "
-    "(M1, M2...). Answer in plain text, state your uncertainty, and never suggest "
-    "transmitting frames on a live charger bus."
+    "listen-only capture excerpt and a question. "
+)
+_SYSTEM_PROMPT_TAIL = (
+    "Answer in plain text, state your uncertainty, and never suggest transmitting "
+    "frames on a live charger bus."
 )
 
 
@@ -238,12 +240,27 @@ class Redactor:
         return name
 
 
+def system_prompt(options: RedactionOptions) -> str:
+    """The system message, kept true to how addresses appear in the context."""
+    addresses = (
+        "Module addresses are pseudonymised (M1, M2...). "
+        if options.anonymise_addresses
+        else "Module addresses are the real bus addresses (hex). "
+    )
+    return _SYSTEM_PROMPT_HEAD + addresses + _SYSTEM_PROMPT_TAIL
+
+
+#: System message of a connection test (no capture involved).
+SYSTEM_PROMPT = system_prompt(RedactionOptions())
+
+
 @dataclass(frozen=True, slots=True)
 class DiagnosisRequest:
     """Exactly what will be sent: shown to the operator before confirmation."""
 
     question: str
     context: str
+    system: str = SYSTEM_PROMPT
 
     def prompt(self) -> str:
         """The user message sent to the provider."""
@@ -270,17 +287,21 @@ class DiagnosisService:
         """Build the request to preview; refuses an empty question."""
         if not question.strip():
             raise ValueError("Ask a question first")
-        return DiagnosisRequest(question.strip(), self._redactor.redact(frames, options))
+        return DiagnosisRequest(
+            question.strip(), self._redactor.redact(frames, options), system_prompt(options)
+        )
 
     def ask(self, request: DiagnosisRequest, spec: ProviderSpec, model: str) -> str:
         """Send a confirmed request and return the answer text."""
-        return self._call(spec, model, request.prompt())
+        return self._call(spec, model, request.prompt(), request.system)
 
     def test_connection(self, spec: ProviderSpec, model: str) -> str:
         """Send a minimal request proving the key, endpoint and model work."""
         return self._call(spec, model, "Reply with the single word OK.")
 
-    def _call(self, spec: ProviderSpec, model: str, prompt: str) -> str:
+    def _call(
+        self, spec: ProviderSpec, model: str, prompt: str, system: str = SYSTEM_PROMPT
+    ) -> str:
         """Resolve adapter and key, then call; the key never leaves this frame."""
         provider = self._providers.get(spec.id)
         if provider is None:
@@ -290,4 +311,4 @@ class DiagnosisService:
             key = self._keys.get(spec.id)
             if not key:
                 raise ProviderError(f"No API key stored for {spec.label}")
-        return provider.complete(SYSTEM_PROMPT, prompt, model.strip() or spec.default_model, key)
+        return provider.complete(system, prompt, model.strip() or spec.default_model, key)

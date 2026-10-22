@@ -211,6 +211,24 @@ def test_prepare_builds_previewable_request() -> None:
     assert request.prompt().endswith("Question:\nwhy?")
 
 
+def test_system_prompt_matches_the_address_redaction() -> None:
+    service = DiagnosisService({}, FakeKeys())
+    frames = [captured(infypower_id(0x03, 0x3F, 0x05), bytes(8), 0.0)]
+    pseudonymised = service.prepare("why?", frames, RedactionOptions())
+    literal = service.prepare("why?", frames, RedactionOptions(anonymise_addresses=False))
+    assert "pseudonymised (M1, M2...)" in pseudonymised.system
+    assert "real bus addresses" in literal.system
+    assert "pseudonymised" not in literal.system
+    assert pseudonymised.system == SYSTEM_PROMPT
+
+
+def test_ask_sends_the_request_system_prompt() -> None:
+    provider = FakeProvider("ok")
+    service = DiagnosisService({"local": provider}, FakeKeys())
+    service.ask(DiagnosisRequest("q", "ctx", "custom system"), provider_by_id("local"), "m")
+    assert provider.calls[0][0] == "custom system"
+
+
 def test_prepare_rejects_blank_question() -> None:
     with pytest.raises(ValueError, match="question"):
         DiagnosisService({}, FakeKeys()).prepare("   ", [], RedactionOptions())

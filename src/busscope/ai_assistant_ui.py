@@ -28,7 +28,6 @@ from PySide6.QtWidgets import (
 
 from busscope.ai_assistant import (
     PROVIDERS,
-    SYSTEM_PROMPT,
     DiagnosisRequest,
     DiagnosisService,
     KeyStore,
@@ -495,7 +494,7 @@ class AssistantWidget(QWidget):
             return
         self._request = request
         self.preview.setPlainText(
-            f"Model: {self._model()}\n\nSystem:\n{SYSTEM_PROMPT}\n\n{request.prompt()}"
+            f"Model: {self._model()}\n\nSystem:\n{request.system}\n\n{request.prompt()}"
         )
         self.destination_label.setText(self._destination())
         for widget in (self.preview, self.destination_label, self.send_button):

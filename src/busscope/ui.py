@@ -110,6 +110,9 @@ class CaptureWindow(QMainWindow):
         self._channel = ""
         self._records: list[CapturedFrame] = []
         self._capture_generation = 0
+        # Index of the first record of the current source: an earlier source's records stay
+        # on screen but are not the current capture.
+        self._source_start = 0
         self._display_start_index = 0
         self._replay = ReplayController()
         self._replay_last_tick = 0.0
@@ -293,7 +296,7 @@ class CaptureWindow(QMainWindow):
         """Frames captured, or the whole loaded replay, for read-only consumers (AI tab)."""
         if self._mode is ToolbarMode.REPLAY and self._replay.has_records:
             return self._replay.records
-        return tuple(self._records)
+        return tuple(self._records[self._source_start :])
 
     def capture_generation(self) -> int:
         """Identity of the capture behind captured_frames(): bumped on every source change."""
@@ -302,6 +305,7 @@ class CaptureWindow(QMainWindow):
     def _new_capture(self) -> None:
         """Record that captured_frames() now describes another capture."""
         self._capture_generation += 1
+        self._source_start = len(self._records)
         self.capture_changed.emit()
 
     def features(self) -> frozenset[Feature]:
@@ -788,7 +792,7 @@ class CaptureWindow(QMainWindow):
 
     def _append_record(self, captured: CapturedFrame) -> None:
         """Keep the frame; the first one makes the capture usable by read-only consumers."""
-        first = not self._records
+        first = len(self._records) == self._source_start
         self._records.append(captured)
         if first:
             self.capture_changed.emit()
