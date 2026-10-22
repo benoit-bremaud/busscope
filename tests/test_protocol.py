@@ -1,6 +1,13 @@
 import pytest
 
-from busscope.protocol import CanFrame, ProtocolDecoder
+from busscope.protocol import (
+    CanFrame,
+    DecodeResult,
+    ModuleAvailability,
+    ModuleState,
+    ProtocolDecoder,
+    format_decoded_values,
+)
 
 
 def test_decodes_documented_extended_identifier() -> None:
@@ -182,3 +189,16 @@ def test_zero_available_current_indicates_power_off() -> None:
 
     assert result.module_availability is not None
     assert result.module_availability.indicates_power_off() is True
+
+
+def test_formatter_serialises_external_voltage_and_walk_in_state() -> None:
+    result = DecodeResult(
+        frame=CanFrame(0x1, b""),
+        identifier=None,
+        description="",
+        module_availability=ModuleAvailability(400.0, 25.0),
+        module_state=ModuleState(walk_in_enabled=True),
+    )
+    values = format_decoded_values(result, lambda value: f"{value:g}")
+    assert "Vext=400 V, Available=25 A" in values
+    assert values[-2:] == ["Faults=none", "Walk-in=on"]

@@ -5,7 +5,7 @@ import time
 from pathlib import Path
 from typing import Protocol
 
-from PySide6.QtCore import Qt, QTimer
+from PySide6.QtCore import Qt, QTimer, Signal
 from PySide6.QtGui import QAction, QKeySequence, QPalette
 from PySide6.QtWidgets import (
     QAbstractButton,
@@ -38,7 +38,7 @@ from busscope.analysis import (
 from busscope.capture import CanInterface, CaptureConfiguration
 from busscope.icons import load_icon
 from busscope.preferences import DisplayPreferences, IdentifierFormat
-from busscope.protocol import DecodeResult
+from busscope.protocol import DecodeResult, format_decoded_values
 from busscope.protocol_catalogue import DEFAULT_CATALOGUE, Feature
 from busscope.protocol_selector import ProtocolSelector
 from busscope.replay import CsvCaptureLoader, ReplayController
@@ -82,6 +82,9 @@ class CaptureWindow(QMainWindow):
 
     _MAX_FRAMES_PER_TICK = 100
     _MAX_DISPLAYED_FRAMES = 10_000
+    # Emitted when the frames exposed by captured_frames() are another capture, or when the
+    # first frame of a capture arrives: read-only consumers re-evaluate what they show.
+    capture_changed = Signal()
 
     def __init__(
         self,
@@ -106,6 +109,10 @@ class CaptureWindow(QMainWindow):
         self._capture_origin: float | None = None
         self._channel = ""
         self._records: list[CapturedFrame] = []
+        self._capture_generation = 0
+        # Index of the first record of the current source: an earlier source's records stay
+        # on screen but are not the current capture.
+        self._source_start = 0
         self._display_start_index = 0
         self._replay = ReplayController()
         self._replay_last_tick = 0.0
@@ -285,6 +292,22 @@ class CaptureWindow(QMainWindow):
         layout.addWidget(field)
         return widget
 
+    def captured_frames(self) -> tuple[CapturedFrame, ...]:
+        """Frames captured, or the whole loaded replay, for read-only consumers (AI tab)."""
+        if self._mode is ToolbarMode.REPLAY and self._replay.has_records:
+            return self._replay.records
+        return tuple(self._records[self._source_start :])
+
+    def capture_generation(self) -> int:
+        """Identity of the capture behind captured_frames(): bumped on every source change."""
+        return self._capture_generation
+
+    def _new_capture(self) -> None:
+        """Record that captured_frames() now describes another capture."""
+        self._capture_generation += 1
+        self._source_start = len(self._records)
+        self.capture_changed.emit()
+
     def features(self) -> frozenset[Feature]:
         """Features the chosen protocol resolves from the catalogue; none before a pick."""
         protocol = self.protocol_selector.selected
@@ -410,8 +433,9 @@ class CaptureWindow(QMainWindow):
     def set_mode(self, mode: ToolbarMode) -> None:
         """Switch to ``mode`` if the protocol offers it and no source is running."""
         running = self._mode is not None and not can_switch_mode(self._toolbar_state(self._mode))
-        if mode in self._sources() and not running:
+        if mode in self._sources() and not running and mode is not self._mode:
             self._mode = mode
+            self._new_capture()
         self._check_mode_button()
         self._sync_toolbar()
 
@@ -628,6 +652,7 @@ class CaptureWindow(QMainWindow):
         self._replay_active = False
         self._sync_toolbar()
         self.frame_list.clear()
+        self._new_capture()
         self.statistics_list.clear()
         self.status_label.setText(f"Loaded {len(records)} replay frame(s)")
 
@@ -679,6 +704,7 @@ class CaptureWindow(QMainWindow):
         self._replay_active = False
         self._sync_toolbar()
         self.status_label.setText("Replay reset")
+        self._new_capture()
 
     def _advance_replay(self) -> None:
         """Release replay records that became due since the last tick, then stop at the end."""
@@ -687,7 +713,7 @@ class CaptureWindow(QMainWindow):
         due = self._replay.advance(now - self._replay_last_tick)
         self._replay_last_tick = now
         for captured in due:
-            self._records.append(captured)
+            self._append_record(captured)
             if not self._display_paused and self._frame_filter.matches(captured):
                 self._add_to_display(captured)
         if was_playing and not self._replay.is_playing:
@@ -760,9 +786,16 @@ class CaptureWindow(QMainWindow):
                 logger.error("Cannot timestamp a frame without a capture origin")
                 return
             captured = CapturedFrame(time.monotonic() - capture_origin, result)
-            self._records.append(captured)
+            self._append_record(captured)
             if not self._display_paused and self._frame_filter.matches(captured):
                 self._add_to_display(captured)
+
+    def _append_record(self, captured: CapturedFrame) -> None:
+        """Keep the frame; the first one makes the capture usable by read-only consumers."""
+        first = len(self._records) == self._source_start
+        self._records.append(captured)
+        if first:
+            self.capture_changed.emit()
 
     def _add_to_display(self, captured: CapturedFrame) -> None:
         """Append one row and drop the oldest beyond the display cap."""
@@ -801,49 +834,11 @@ class CaptureWindow(QMainWindow):
     def _format_result(self, result: DecodeResult) -> str:
         """Format one decoded result for the operator's event list."""
         frame = result.frame
-        number = self._format_number
-        decoded_values: list[str] = []
-        if self._preferences.show_decoded_values and result.system_measurements is not None:
-            system_measurements = result.system_measurements
-            decoded_values.append(
-                f"Vout={number(system_measurements.output_voltage_volts)} V, "
-                f"Iout={number(system_measurements.total_output_current_amperes)} A"
-            )
-        if self._preferences.show_decoded_values and result.module_measurements is not None:
-            module_measurements = result.module_measurements
-            decoded_values.append(
-                f"Module Vout={number(module_measurements.output_voltage_volts)} V, "
-                f"Iout={number(module_measurements.output_current_amperes)} A"
-            )
-        if self._preferences.show_decoded_values and result.ac_input_measurements is not None:
-            ac_measurements = result.ac_input_measurements
-            decoded_values.append(
-                f"AC={number(ac_measurements.first_phase_voltage_volts)}/"
-                f"{number(ac_measurements.second_phase_voltage_volts)}/"
-                f"{number(ac_measurements.third_phase_voltage_volts)} V"
-            )
-        if self._preferences.show_decoded_values and result.module_availability is not None:
-            module_availability = result.module_availability
-            decoded_values.append(
-                f"Available={number(module_availability.available_current_amperes)} A"
-            )
-        if self._preferences.show_decoded_values and result.module_ratings is not None:
-            module_ratings = result.module_ratings
-            decoded_values.append(
-                f"Ratings={number(module_ratings.minimum_output_voltage_volts)}-"
-                f"{number(module_ratings.maximum_output_voltage_volts)} V, "
-                f"{number(module_ratings.maximum_output_current_amperes)} A, "
-                f"{number(module_ratings.rated_output_power_watts)} W"
-            )
-        if self._preferences.show_decoded_values and result.module_count is not None:
-            decoded_values.append(f"Modules={result.module_count}")
-        if self._preferences.show_decoded_values and result.module_group_number is not None:
-            decoded_values.append(f"Group={result.module_group_number}")
-        if self._preferences.show_decoded_values and result.ambient_temperature_celsius is not None:
-            decoded_values.append(f"Ambient={result.ambient_temperature_celsius} °C")
-        if self._preferences.show_decoded_values and result.module_state is not None:
-            faults = result.module_state.active_faults()
-            decoded_values.append(f"Faults={', '.join(faults) if faults else 'none'}")
+        decoded_values = (
+            format_decoded_values(result, self._format_number)
+            if self._preferences.show_decoded_values
+            else []
+        )
         description = f" | {result.description}" if result.description else ""
         details = f" | {'; '.join(decoded_values)}" if decoded_values else ""
         diagnostics = (

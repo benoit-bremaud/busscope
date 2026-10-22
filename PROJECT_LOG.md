@@ -140,3 +140,26 @@ ordinary commits from that PR's branch.
   `docs/architecture/`. Codex P2 (Infypower must be available) fixed in `7d8e099`. Follow-ups:
   #73 (non-CAN transport settings), #74 (decoders), #75 (protocol hierarchy statistics), #77
   (minimalist contextual UI).
+- **PR #79 merged** (`effb5c8`) — `feat(ui): minimalist contextual UI on an inheritable domain tree`
+  (`feat/77-minimal-contextual-ui`, closes #77). The protocol catalogue became a recursive tree
+  whose nodes inherit Feature sets; the capture tab now uses progressive disclosure (protocol
+  first, then source, then only the controls the resolved features grant), with the listen-only
+  badge always visible. Gotcha: a CAN protocol filed outside fieldbus/can (e.g. CHAdeMO under EV
+  charging) must grant the CAN features itself (`cbc1311`).
+- **PR #85 merged** (`5d98f39`) — `fix(ui): wrap status messages and name the slcan acceptance
+  checkbox` (`fix/84-wrap-status-message`, closes #84). Long status messages wrap instead of
+  widening the window. Codex P1 fixed in `e2319a0`: never recommend `slcand -l` for a live bus —
+  only verified native SocketCAN interfaces are suggested for live capture.
+- **PR #98 in review** — `feat(ai): multi-provider AI diagnosis assistant` (`feat/83-ai-assistant`,
+  closes #83). New "AI assistant" tab: Anthropic (default `claude-opus-5-5`), OpenAI, Mistral,
+  Google and local OpenAI-compatible models through stdlib HTTP adapters behind a Qt-free
+  `LlmProvider` port; API key only in the OS keyring (`busscope-ai`); every send is previewed
+  (redacted: pseudonymised addresses, relative time, payloads masked unless actually decoded) and
+  confirmed. TLS required off-PC, no redirects, proxies bypassed for loopback. Two Opus critical
+  reviews (7 + 8 fixes, `841939c`, `2939ede`); Codex P1/P2 fixed after them (malformed payloads
+  stay masked, the whole loaded replay is exposed to the assistant, replies in flight are dropped
+  on any provider/model/endpoint change). Gate: 383 tests, 99 % coverage, SonarQube PASSED. Note:
+  the non-Anthropic wire formats come from public docs (Context7 quota was exhausted).
+  Paused 2026-10-22 at `0c2455e`: CI all green, the three Codex threads answered and resolved.
+  To resume: wait for the Codex re-review, answer any new comment inline, ask the owner for merge
+  approval, then post-merge cleanup and replace this entry with the merge SHA. Next: #99, #95.

@@ -5,6 +5,9 @@ import sys
 from PySide6.QtCore import QCoreApplication, QSettings
 from PySide6.QtWidgets import QApplication
 
+from busscope.ai_assistant_ui import AssistantWidget
+from busscope.ai_keystore import KeyringKeyStore
+from busscope.ai_providers import build_provider
 from busscope.capture import PythonCanAdapter
 from busscope.protocol import ProtocolDecoder
 from busscope.qt_settings import QtSettingsRepository
@@ -36,7 +39,18 @@ def create_capture_window() -> CaptureWindow:
     settings_widget = SettingsWidget(preferences, repository)
     transmitter = SocketCanTransmitter(IpLinkCanInterfaceInspector())
     transmission_widget = TransmissionWidget(transmitter)
-    return CaptureWindow(session, preferences, settings_widget, transmission_widget)
+    window = CaptureWindow(session, preferences, settings_widget, transmission_widget)
+    assistant = AssistantWidget(
+        KeyringKeyStore(),
+        build_provider,
+        QSettings(),
+        window.captured_frames,
+        window.capture_generation,
+    )
+    window.tabs.addTab(assistant, "AI assistant")
+    # The tab re-evaluates itself when shown; a capture change while it stays open too.
+    window.capture_changed.connect(assistant.on_capture_changed)
+    return window
 
 
 def main() -> int:
