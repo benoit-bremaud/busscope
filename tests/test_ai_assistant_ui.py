@@ -581,3 +581,35 @@ def test_empty_messages_take_no_room(qt_application: QApplication, tmp_path: Pat
     harness.frames.clear()
     widget.refresh()
     assert not widget.waiting_label.isHidden()
+
+
+def test_editing_the_question_drops_the_answer_and_the_reply_in_flight(
+    qt_application: QApplication, tmp_path: Path
+) -> None:
+    del qt_application
+    harness = DeferredHarness(tmp_path, FakeKeys({"anthropic": ANTHROPIC_KEY}), FakeProvider("old"))
+    harness.frames.append(frame())
+    widget = harness.widget()
+    widget.question_input.setPlainText("first?")
+    widget.prepare()
+    widget.send()
+    widget.question_input.setPlainText("second?")
+    harness.pending[0]()
+    assert widget.answer.isHidden() and widget.answer.toPlainText() == ""
+    assert widget.send_button.isEnabled()
+
+
+@pytest.mark.parametrize("box_name", ["anonymise_input", "relative_time_input", "mask_input"])
+def test_changing_a_privacy_option_voids_the_preview(
+    qt_application: QApplication, tmp_path: Path, box_name: str
+) -> None:
+    del qt_application
+    harness = Harness(tmp_path, FakeKeys({"anthropic": ANTHROPIC_KEY}), FakeProvider())
+    harness.frames.append(frame())
+    widget = harness.widget()
+    widget.question_input.setPlainText("why?")
+    widget.prepare()
+    getattr(widget, box_name).setChecked(False)
+    assert widget.send_button.isHidden()
+    widget.send()
+    assert harness.provider.prompts == []

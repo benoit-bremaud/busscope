@@ -193,6 +193,10 @@ def test_truncated_answers_are_flagged(provider: type, reply: object, expected: 
     [
         (AnthropicProvider, {"content": [], "stop_reason": "refusal"}),
         (GoogleProvider, {"candidates": [{"finishReason": "SAFETY"}]}),
+        (
+            OpenAiCompatibleProvider,
+            {"choices": [{"message": {"content": "partial"}, "finish_reason": "content_filter"}]},
+        ),
     ],
 )
 def test_refusals_are_explicit(provider: type, reply: object) -> None:

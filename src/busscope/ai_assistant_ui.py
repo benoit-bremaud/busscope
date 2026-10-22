@@ -251,6 +251,9 @@ class AssistantWidget(QWidget):
         self.prepare_button.clicked.connect(self.prepare)
         self.privacy_toggle.toggled.connect(self._on_privacy_toggled)
         self.question_input.textChanged.connect(self._on_question_edited)
+        # A preview is only valid for the privacy options it was built with.
+        for box in (self.anonymise_input, self.relative_time_input, self.mask_input):
+            box.toggled.connect(lambda _checked: self._reset_preview())
         self.send_button.clicked.connect(self.send)
         self._on_provider_changed()
 
@@ -369,8 +372,12 @@ class AssistantWidget(QWidget):
         )
 
     def _on_question_edited(self) -> None:
-        """Prepare is offered only once there is a question; an edit voids the preview."""
+        """Prepare is offered only once there is a question; an edit voids the preview.
+
+        It also voids the answer and any reply in flight: they answer another question.
+        """
         self.prepare_button.setVisible(bool(self.question_input.toPlainText().strip()))
+        self._invalidate_pending()
         self._reset_preview()
 
     def _reset_preview(self) -> None:

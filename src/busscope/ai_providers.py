@@ -124,6 +124,9 @@ def _peek(payload: object, *path: str | int) -> str | None:
         return None
 
 
+_DECLINED = "The model declined to answer"
+
+
 def _mark_truncated(answer: str, truncated: bool) -> str:
     """Tell the operator when the model stopped at the output limit."""
     return f"{answer}\n\n[answer truncated]" if truncated else answer
@@ -163,7 +166,7 @@ class AnthropicProvider:
         ]
         stop = _peek(reply, "stop_reason")
         if stop == "refusal":
-            raise ProviderError("The model declined to answer")
+            raise ProviderError(_DECLINED)
         if not texts:
             raise ProviderError("The provider returned no text answer")
         return _mark_truncated("".join(texts), stop == "max_tokens")
@@ -193,8 +196,12 @@ class OpenAiCompatibleProvider:
             },
             _TIMEOUT_SECONDS,
         )
+        finish = _peek(reply, "choices", 0, "finish_reason")
+        # A filtered completion omits content: partial text must not pass as an answer.
+        if finish == "content_filter":
+            raise ProviderError(_DECLINED)
         answer = _dig(reply, "choices", 0, "message", "content")
-        return _mark_truncated(answer, _peek(reply, "choices", 0, "finish_reason") == "length")
+        return _mark_truncated(answer, finish == "length")
 
 
 class GoogleProvider:
@@ -218,7 +225,7 @@ class GoogleProvider:
             _TIMEOUT_SECONDS,
         )
         if _peek(reply, "candidates", 0, "finishReason") == "SAFETY":
-            raise ProviderError("The model declined to answer")
+            raise ProviderError(_DECLINED)
         answer = _dig(reply, "candidates", 0, "content", "parts", 0, "text")
         return _mark_truncated(
             answer, _peek(reply, "candidates", 0, "finishReason") == "MAX_TOKENS"
