@@ -163,6 +163,14 @@ def test_invalid_json_reply() -> None:
             "A",
         ),
         (
+            AnthropicProvider,
+            {
+                "content": [{"type": "text", "text": "A"}],
+                "stop_reason": "model_context_window_exceeded",
+            },
+            "A\n\n[answer truncated]",
+        ),
+        (
             OpenAiCompatibleProvider,
             {"choices": [{"message": {"content": "B"}, "finish_reason": "length"}]},
             "B\n\n[answer truncated]",
@@ -338,3 +346,25 @@ def test_keystore_failures_are_key_free_provider_errors() -> None:
     assert SECRET not in str(caught.value)
     with pytest.raises(ProviderError, match="Cannot delete"):
         store.delete("anthropic")
+
+
+def test_gemini_concatenates_every_text_part() -> None:
+    reply = {
+        "candidates": [
+            {
+                "content": {
+                    "parts": [{"text": "First. "}, {"inlineData": {}}, {"text": "Second."}]
+                },
+                "finishReason": "STOP",
+            }
+        ]
+    }
+    assert GoogleProvider("https://x", RecordingOpener(reply)).complete("s", "p", "m", "k") == (
+        "First. Second."
+    )
+
+
+def test_gemini_without_text_parts_is_an_error() -> None:
+    reply = {"candidates": [{"content": {"parts": [{"inlineData": {}}]}, "finishReason": "STOP"}]}
+    with pytest.raises(ProviderError, match="no text"):
+        GoogleProvider("https://x", RecordingOpener(reply)).complete("s", "p", "m", "k")

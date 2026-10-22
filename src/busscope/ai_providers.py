@@ -101,8 +101,8 @@ def _error_text(error: urllib.error.HTTPError) -> str:
     return error.reason or "request failed"
 
 
-def _dig(payload: object, *path: str | int) -> str:
-    """Walk a JSON path and return the text found there, or raise ProviderError."""
+def _walk(payload: object, *path: str | int) -> object:
+    """Walk a JSON path and return the node found there, or raise ProviderError."""
     node = payload
     for step in path:
         if isinstance(step, int) and isinstance(node, list) and len(node) > step:
@@ -111,9 +111,28 @@ def _dig(payload: object, *path: str | int) -> str:
             node = node[step]
         else:
             raise ProviderError(_UNEXPECTED_REPLY)
+    return node
+
+
+def _dig(payload: object, *path: str | int) -> str:
+    """Walk a JSON path and return the text found there, or raise ProviderError."""
+    node = _walk(payload, *path)
     if not isinstance(node, str):
         raise ProviderError(_UNEXPECTED_REPLY)
     return node
+
+
+def _texts(parts: object, key: str, **match: str) -> list[str]:
+    """Collect the ``key`` strings of the dict items of ``parts`` whose fields equal ``match``."""
+    if not isinstance(parts, list):
+        raise ProviderError(_UNEXPECTED_REPLY)
+    return [
+        part[key]
+        for part in parts
+        if isinstance(part, dict)
+        and isinstance(part.get(key), str)
+        and all(part.get(field) == value for field, value in match.items())
+    ]
 
 
 def _peek(payload: object, *path: str | int) -> str | None:
@@ -125,6 +144,8 @@ def _peek(payload: object, *path: str | int) -> str | None:
 
 
 _DECLINED = "The model declined to answer"
+_NO_TEXT = "The provider returned no text answer"
+_ANTHROPIC_TRUNCATED = frozenset({"max_tokens", "model_context_window_exceeded"})
 _GEMINI_COMPLETE = frozenset({"STOP", "MAX_TOKENS"})
 
 
@@ -155,22 +176,13 @@ class AnthropicProvider:
             },
             _TIMEOUT_SECONDS,
         )
-        blocks = reply.get("content") if isinstance(reply, dict) else None
-        if not isinstance(blocks, list):
-            raise ProviderError(_UNEXPECTED_REPLY)
-        texts = [
-            block["text"]
-            for block in blocks
-            if isinstance(block, dict)
-            and block.get("type") == "text"
-            and isinstance(block.get("text"), str)
-        ]
+        texts = _texts(_walk(reply, "content"), "text", type="text")
         stop = _peek(reply, "stop_reason")
         if stop == "refusal":
             raise ProviderError(_DECLINED)
         if not texts:
-            raise ProviderError("The provider returned no text answer")
-        return _mark_truncated("".join(texts), stop == "max_tokens")
+            raise ProviderError(_NO_TEXT)
+        return _mark_truncated("".join(texts), stop in _ANTHROPIC_TRUNCATED)
 
 
 class OpenAiCompatibleProvider:
@@ -230,8 +242,11 @@ class GoogleProvider:
         # text must not pass as an answer.
         if finish is not None and finish not in _GEMINI_COMPLETE:
             raise ProviderError(_DECLINED)
-        answer = _dig(reply, "candidates", 0, "content", "parts", 0, "text")
-        return _mark_truncated(answer, finish == "MAX_TOKENS")
+        # Every text part belongs to the answer: Gemini may split it across several.
+        texts = _texts(_walk(reply, "candidates", 0, "content", "parts"), "text")
+        if not texts:
+            raise ProviderError(_NO_TEXT)
+        return _mark_truncated("".join(texts), finish == "MAX_TOKENS")
 
 
 def build_provider(
