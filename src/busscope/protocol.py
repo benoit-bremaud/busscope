@@ -171,7 +171,10 @@ def format_decoded_values(result: DecodeResult, number: Callable[[float], str]) 
             f"{number(ac.third_phase_voltage_volts)} V"
         )
     if (availability := result.module_availability) is not None:
-        values.append(f"Available={number(availability.available_current_amperes)} A")
+        values.append(
+            f"Vext={number(availability.external_voltage_volts)} V, "
+            f"Available={number(availability.available_current_amperes)} A"
+        )
     if (ratings := result.module_ratings) is not None:
         values.append(
             f"Ratings={number(ratings.minimum_output_voltage_volts)}-"
@@ -188,6 +191,7 @@ def format_decoded_values(result: DecodeResult, number: Callable[[float], str]) 
     if result.module_state is not None:
         faults = result.module_state.active_faults()
         values.append(f"Faults={', '.join(faults) if faults else 'none'}")
+        values.append(f"Walk-in={'on' if result.module_state.walk_in_enabled else 'off'}")
     return values
 
 

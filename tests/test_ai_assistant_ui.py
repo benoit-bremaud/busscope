@@ -135,12 +135,12 @@ def test_key_format_check_gates_saving_and_key_goes_to_keyring_only(
     harness = Harness(tmp_path, FakeKeys(), FakeProvider())
     widget = harness.widget()
     widget.key_input.setText("wrong")
-    assert not widget.save_key_button.isEnabled()
+    assert widget.save_key_button.isHidden()
     assert widget.key_state.text() == "Unexpected format"
     widget.save_key()
     assert harness.keys.keys == {}
     widget.key_input.setText(ANTHROPIC_KEY)
-    assert widget.save_key_button.isEnabled()
+    assert not widget.save_key_button.isHidden()
     widget.save_key_button.click()
     assert harness.keys.keys == {"anthropic": ANTHROPIC_KEY}
     assert widget.key_input.text() == ""
@@ -499,3 +499,70 @@ def test_editing_the_model_drops_a_reply_in_flight(
     assert widget.test_button.isEnabled()
     harness.pending[0]()
     assert widget.status_label.text() == "Testing…"
+
+
+def test_controls_appear_only_once_the_previous_step_makes_them_useful(
+    qt_application: QApplication, tmp_path: Path
+) -> None:
+    del qt_application
+    harness = Harness(tmp_path, FakeKeys({"anthropic": ANTHROPIC_KEY}), FakeProvider("ok"))
+    harness.frames.append(frame())
+    widget = harness.widget()
+    assert widget.prepare_button.isHidden()
+    assert widget.privacy_options.isHidden()
+    assert widget.answer.isHidden()
+    widget.question_input.setPlainText("   ")
+    assert widget.prepare_button.isHidden()
+    widget.question_input.setPlainText("why?")
+    assert not widget.prepare_button.isHidden()
+    widget.privacy_toggle.setChecked(True)
+    assert not widget.privacy_options.isHidden()
+    widget.privacy_toggle.setChecked(False)
+    assert widget.privacy_options.isHidden()
+    widget.prepare()
+    widget.send()
+    assert not widget.answer.isHidden()
+
+
+def test_editing_the_question_voids_the_preview(
+    qt_application: QApplication, tmp_path: Path
+) -> None:
+    del qt_application
+    harness = Harness(tmp_path, FakeKeys({"anthropic": ANTHROPIC_KEY}), FakeProvider())
+    harness.frames.append(frame())
+    widget = harness.widget()
+    widget.question_input.setPlainText("why?")
+    widget.prepare()
+    assert not widget.send_button.isHidden()
+    widget.question_input.setPlainText("why not?")
+    assert widget.send_button.isHidden()
+
+
+def test_a_new_capture_drops_the_previous_answer_and_replies_in_flight(
+    qt_application: QApplication, tmp_path: Path
+) -> None:
+    del qt_application
+    harness = DeferredHarness(tmp_path, FakeKeys({"anthropic": ANTHROPIC_KEY}), FakeProvider("old"))
+    harness.frames.append(frame())
+    widget = harness.widget()
+    widget.question_input.setPlainText("why?")
+    widget.prepare()
+    widget.send()
+    harness.frames[:] = [CapturedFrame(9.0, frame().result)]
+    widget.refresh()
+    harness.pending[0]()
+    assert widget.answer.isHidden() and widget.answer.toPlainText() == ""
+
+
+def test_reopening_the_tab_on_the_same_capture_keeps_the_answer(
+    qt_application: QApplication, tmp_path: Path
+) -> None:
+    del qt_application
+    harness = Harness(tmp_path, FakeKeys({"anthropic": ANTHROPIC_KEY}), FakeProvider("kept"))
+    harness.frames.append(frame())
+    widget = harness.widget()
+    widget.question_input.setPlainText("why?")
+    widget.prepare()
+    widget.send()
+    widget.refresh()
+    assert widget.answer.toPlainText() == "kept" and not widget.answer.isHidden()

@@ -119,14 +119,15 @@ def test_redaction_pseudonymises_addresses_consistently_and_keeps_broadcast() ->
     assert "0x3F" not in text and "0x05" not in text
 
 
-def test_redaction_masks_undecoded_payloads_but_keeps_decoded_ones() -> None:
+def test_redaction_masks_every_raw_payload_and_keeps_decoded_values() -> None:
     frames = [
         captured(infypower_id(0x03, 0x01, 0x02), bytes(range(8)), 0.0),
         captured(infypower_id(0x0B, 0x01, 0x02), b"SERIAL01", 0.1),
         captured(0x123, b"\x01\x02", 0.2),
     ]
     lines = Redactor().redact(frames, RedactionOptions()).splitlines()
-    assert "data=00 01 02 03 04 05 06 07" in lines[0]
+    assert "data=<8 bytes masked> decoded=[Module Vout=" in lines[0]
+    assert "00 01 02" not in lines[0]
     assert "<8 bytes masked>" in lines[1] and "SERIAL" not in lines[1]
     assert lines[2].endswith("id=<undecoded> data=<2 bytes masked>")
     assert "0x123" not in lines[2]
@@ -143,8 +144,23 @@ def test_decoded_frames_carry_their_values_for_the_model() -> None:
     assert "decoded=" not in lines[1]
 
 
+def test_partially_parsed_payload_never_leaks_its_unparsed_bytes() -> None:
+    # Command 0x02 parses only byte 2 (module count): the other seven stay hidden.
+    line = Redactor().redact(
+        [captured(infypower_id(0x02, 0x01, 0x02), b"\xaa\xbb\x03\xcc\xdd\xee\xff\x11", 0.0)],
+        RedactionOptions(),
+    )
+    assert "<8 bytes masked>" in line and "AA" not in line
+
+
+def test_unmasked_decoded_frame_shows_raw_bytes_and_values() -> None:
+    options = RedactionOptions(mask_raw_payloads=False)
+    line = Redactor().redact([captured(infypower_id(0x03, 0x01, 0x02), bytes(8), 0.0)], options)
+    assert "data=00 00 00 00 00 00 00 00 decoded=[Module Vout=0.00 V" in line
+
+
 def test_unmasked_undecoded_payload_has_no_decoded_values() -> None:
-    options = RedactionOptions(mask_undecoded_payloads=False)
+    options = RedactionOptions(mask_raw_payloads=False)
     line = Redactor().redact([captured(0x123, b"\x01", 0.0)], options)
     assert line.endswith("data=01")
 
@@ -158,7 +174,7 @@ def test_malformed_payload_of_a_decoded_command_stays_masked() -> None:
 def test_redaction_can_be_disabled() -> None:
     frames = [captured(infypower_id(0x0B, 0x3F, 0x05), b"\xaa" * 8, 12.5)]
     options = RedactionOptions(
-        anonymise_addresses=False, relative_time=False, mask_undecoded_payloads=False
+        anonymise_addresses=False, relative_time=False, mask_raw_payloads=False
     )
     line = Redactor().redact(frames, options)
     assert line.startswith("t=+12.500s")

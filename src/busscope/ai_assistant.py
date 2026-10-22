@@ -167,7 +167,7 @@ class RedactionOptions:
 
     anonymise_addresses: bool = True
     relative_time: bool = True
-    mask_undecoded_payloads: bool = True
+    mask_raw_payloads: bool = True
     max_frames: int = 200
 
 
@@ -210,7 +210,8 @@ class Redactor:
             decoded = identifier.command_number in DECODED_COMMANDS and _payload_decoded(
                 record.result
             )
-        if options.mask_undecoded_payloads and not decoded:
+        # Decoded values carry the meaning; raw bytes may hold unparsed identifying data.
+        if options.mask_raw_payloads:
             payload = f"<{len(frame.data)} bytes masked>"
         else:
             payload = frame.data.hex(" ").upper()

@@ -28,7 +28,7 @@ classDiagram
         <<frozen dataclass>>
         +anonymise_addresses: bool = True
         +relative_time: bool = True
-        +mask_undecoded_payloads: bool = True
+        +mask_raw_payloads: bool = True
         +max_frames: int = 200
     }
     class Redactor {

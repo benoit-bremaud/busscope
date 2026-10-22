@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Sequence
 
-from PySide6.QtCore import QObject, QRunnable, QSettings, QSignalBlocker, QThreadPool, Signal
+from PySide6.QtCore import QObject, QRunnable, QSettings, QSignalBlocker, Qt, QThreadPool, Signal
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -20,6 +20,7 @@ from PySide6.QtWidgets import (
     QMessageBox,
     QPlainTextEdit,
     QPushButton,
+    QToolButton,
     QVBoxLayout,
     QWidget,
 )
@@ -125,6 +126,7 @@ class AssistantWidget(QWidget):
         self._key_present: dict[str, bool] = {}
         # Bumped on provider change so a late reply never lands under another provider.
         self._generation = 0
+        self._capture_marker: tuple[int, float] | None = None
 
         self.provider_input = QComboBox()
         self.provider_input.setAccessibleName("AI provider")
@@ -164,10 +166,22 @@ class AssistantWidget(QWidget):
         self.question_input.setPlaceholderText("e.g. Why does module M2 report a fault?")
         self.anonymise_input = QCheckBox("Pseudonymise module addresses")
         self.relative_time_input = QCheckBox("Relative timestamps")
-        self.mask_input = QCheckBox("Mask payloads busscope cannot decode")
+        self.mask_input = QCheckBox("Mask raw payload bytes (decoded values are still sent)")
+        # Safe defaults: the options stay folded until the operator asks for them.
+        self.privacy_toggle = QToolButton()
+        self.privacy_toggle.setText("Privacy options")
+        self.privacy_toggle.setCheckable(True)
+        self.privacy_toggle.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
+        self.privacy_toggle.setArrowType(Qt.ArrowType.RightArrow)
+        self.privacy_options = QWidget()
+        privacy_layout = QVBoxLayout(self.privacy_options)
+        privacy_layout.setContentsMargins(0, 0, 0, 0)
         for box in (self.anonymise_input, self.relative_time_input, self.mask_input):
             box.setChecked(True)
+            privacy_layout.addWidget(box)
+        self.privacy_options.setVisible(False)
         self.prepare_button = QPushButton("Prepare")
+        self.prepare_button.setVisible(False)
         self.preview = QPlainTextEdit()
         self.preview.setReadOnly(True)
         self.preview.setAccessibleName("Payload preview")
@@ -181,8 +195,8 @@ class AssistantWidget(QWidget):
         diagnosis_layout = QVBoxLayout(self.diagnosis)
         diagnosis_layout.setContentsMargins(0, 0, 0, 0)
         diagnosis_layout.addWidget(self.question_input)
-        for box in (self.anonymise_input, self.relative_time_input, self.mask_input):
-            diagnosis_layout.addWidget(box)
+        diagnosis_layout.addWidget(self.privacy_toggle)
+        diagnosis_layout.addWidget(self.privacy_options)
         diagnosis_layout.addWidget(self.prepare_button)
         diagnosis_layout.addWidget(self.preview)
         diagnosis_layout.addWidget(self.destination_label)
@@ -217,6 +231,8 @@ class AssistantWidget(QWidget):
         self.forget_key_button.clicked.connect(self.forget_key)
         self.test_button.clicked.connect(self.test_connection)
         self.prepare_button.clicked.connect(self.prepare)
+        self.privacy_toggle.toggled.connect(self._on_privacy_toggled)
+        self.question_input.textChanged.connect(self._on_question_edited)
         self.send_button.clicked.connect(self.send)
         self._on_provider_changed()
 
@@ -280,6 +296,7 @@ class AssistantWidget(QWidget):
         """Drop in-flight replies and the last answer: they belong to the old setup."""
         self._generation += 1
         self.answer.clear()
+        self.answer.setVisible(False)
         self.send_button.setEnabled(True)
         self.test_button.setEnabled(True)
 
@@ -305,11 +322,17 @@ class AssistantWidget(QWidget):
     def refresh(self) -> None:
         """Re-evaluate what is shown: called on provider, key or capture changes."""
         ready = not self.spec.needs_key or self._has_key()
-        has_frames = bool(self._frames())
+        frames = self._frames()
+        has_frames = bool(frames)
+        # A different capture voids the answer: it described frames no longer shown.
+        marker = (len(frames), frames[-1].timestamp_seconds) if frames else None
+        if marker != self._capture_marker:
+            self._capture_marker = marker
+            self._invalidate_pending()
         if self.spec.needs_key:
             self.key_state.setText("Key stored in the OS keyring" if ready else "No key stored")
             self.forget_key_button.setVisible(ready)
-        self.save_key_button.setEnabled(False)
+        self.save_key_button.setVisible(False)
         self.test_button.setVisible(ready)
         self.diagnosis.setVisible(ready and has_frames)
         if not ready:
@@ -318,6 +341,18 @@ class AssistantWidget(QWidget):
             self.waiting_label.setText("Capture or load frames to ask questions.")
         else:
             self.waiting_label.clear()
+        self._reset_preview()
+
+    def _on_privacy_toggled(self, unfolded: bool) -> None:
+        """Fold or unfold the redaction options."""
+        self.privacy_options.setVisible(unfolded)
+        self.privacy_toggle.setArrowType(
+            Qt.ArrowType.DownArrow if unfolded else Qt.ArrowType.RightArrow
+        )
+
+    def _on_question_edited(self) -> None:
+        """Prepare is offered only once there is a question; an edit voids the preview."""
+        self.prepare_button.setVisible(bool(self.question_input.toPlainText().strip()))
         self._reset_preview()
 
     def _reset_preview(self) -> None:
@@ -334,7 +369,7 @@ class AssistantWidget(QWidget):
             self.refresh()
             return
         valid = self.spec.key_looks_valid(text)
-        self.save_key_button.setEnabled(valid)
+        self.save_key_button.setVisible(valid)
         self.key_state.setText("Format looks right" if valid else "Unexpected format")
 
     def save_key(self) -> None:
@@ -401,7 +436,7 @@ class AssistantWidget(QWidget):
         return RedactionOptions(
             anonymise_addresses=self.anonymise_input.isChecked(),
             relative_time=self.relative_time_input.isChecked(),
-            mask_undecoded_payloads=self.mask_input.isChecked(),
+            mask_raw_payloads=self.mask_input.isChecked(),
         )
 
     def prepare(self) -> None:
@@ -447,6 +482,7 @@ class AssistantWidget(QWidget):
     def _on_answer(self, text: str) -> None:
         """Show the answer as plain text, never as rich text."""
         self.answer.setPlainText(text)
+        self.answer.setVisible(True)
         self.status_label.setText("Answer received")
         self.send_button.setEnabled(True)
 
