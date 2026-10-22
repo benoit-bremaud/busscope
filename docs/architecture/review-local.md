@@ -1,4 +1,4 @@
-# Local review — can_sniffer (PR #60, PROJECT_LOG.md)
+# Local review — busscope (PR #60, PROJECT_LOG.md)
 
 - Date: 2026-10-20
 - Commit: 581b0a0

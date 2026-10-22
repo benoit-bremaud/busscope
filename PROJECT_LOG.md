@@ -1,6 +1,6 @@
 # Project Log
 
-Chronological operational logbook of `can-sniffer`. It complements `git log` and
+Chronological operational logbook of `busscope`. It complements `git log` and
 [`CHANGELOG.md`](CHANGELOG.md): every merged pull request, tag, release, decision and direct
 commit to `main` is recorded here with the context git does not capture. Entries from inception to
 PR #57 were reconstructed retroactively (2026-10-20) from `git log`, merged pull requests, tags,
