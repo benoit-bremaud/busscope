@@ -267,19 +267,21 @@ class AssistantWidget(QWidget):
                 f'Create a key at <a href="{spec.key_url}">{spec.key_url}</a> — {spec.key_hint}'
             )
         self.status_label.clear()
-        self._generation += 1
-        self.answer.clear()
-        self.send_button.setEnabled(True)
-        self.test_button.setEnabled(True)
+        self._invalidate_pending()
         self._save_choices()
         self.refresh()
 
     def _on_setup_edited(self) -> None:
         """A new model or endpoint: drop the preview and any reply still in flight."""
+        self._invalidate_pending()
+        self._reset_preview()
+
+    def _invalidate_pending(self) -> None:
+        """Drop in-flight replies and the last answer: they belong to the old setup."""
         self._generation += 1
+        self.answer.clear()
         self.send_button.setEnabled(True)
         self.test_button.setEnabled(True)
-        self._reset_preview()
 
     def _save_choices(self) -> None:
         """Persist non-secret choices; the key is never written here."""
@@ -351,6 +353,7 @@ class AssistantWidget(QWidget):
             self.key_input.clear()
             del blocker
         self._key_present[self.spec.id] = True
+        self._invalidate_pending()
         self.status_label.setText("Key saved")
         self.refresh()
 
@@ -362,6 +365,7 @@ class AssistantWidget(QWidget):
             self.status_label.setText(f"Error: {error}")
             return
         self._key_present[self.spec.id] = False
+        self._invalidate_pending()
         self.status_label.setText("Key forgotten")
         self.refresh()
 

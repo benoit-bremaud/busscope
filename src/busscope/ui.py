@@ -38,7 +38,7 @@ from busscope.analysis import (
 from busscope.capture import CanInterface, CaptureConfiguration
 from busscope.icons import load_icon
 from busscope.preferences import DisplayPreferences, IdentifierFormat
-from busscope.protocol import DecodeResult
+from busscope.protocol import DecodeResult, format_decoded_values
 from busscope.protocol_catalogue import DEFAULT_CATALOGUE, Feature
 from busscope.protocol_selector import ProtocolSelector
 from busscope.replay import CsvCaptureLoader, ReplayController
@@ -807,49 +807,11 @@ class CaptureWindow(QMainWindow):
     def _format_result(self, result: DecodeResult) -> str:
         """Format one decoded result for the operator's event list."""
         frame = result.frame
-        number = self._format_number
-        decoded_values: list[str] = []
-        if self._preferences.show_decoded_values and result.system_measurements is not None:
-            system_measurements = result.system_measurements
-            decoded_values.append(
-                f"Vout={number(system_measurements.output_voltage_volts)} V, "
-                f"Iout={number(system_measurements.total_output_current_amperes)} A"
-            )
-        if self._preferences.show_decoded_values and result.module_measurements is not None:
-            module_measurements = result.module_measurements
-            decoded_values.append(
-                f"Module Vout={number(module_measurements.output_voltage_volts)} V, "
-                f"Iout={number(module_measurements.output_current_amperes)} A"
-            )
-        if self._preferences.show_decoded_values and result.ac_input_measurements is not None:
-            ac_measurements = result.ac_input_measurements
-            decoded_values.append(
-                f"AC={number(ac_measurements.first_phase_voltage_volts)}/"
-                f"{number(ac_measurements.second_phase_voltage_volts)}/"
-                f"{number(ac_measurements.third_phase_voltage_volts)} V"
-            )
-        if self._preferences.show_decoded_values and result.module_availability is not None:
-            module_availability = result.module_availability
-            decoded_values.append(
-                f"Available={number(module_availability.available_current_amperes)} A"
-            )
-        if self._preferences.show_decoded_values and result.module_ratings is not None:
-            module_ratings = result.module_ratings
-            decoded_values.append(
-                f"Ratings={number(module_ratings.minimum_output_voltage_volts)}-"
-                f"{number(module_ratings.maximum_output_voltage_volts)} V, "
-                f"{number(module_ratings.maximum_output_current_amperes)} A, "
-                f"{number(module_ratings.rated_output_power_watts)} W"
-            )
-        if self._preferences.show_decoded_values and result.module_count is not None:
-            decoded_values.append(f"Modules={result.module_count}")
-        if self._preferences.show_decoded_values and result.module_group_number is not None:
-            decoded_values.append(f"Group={result.module_group_number}")
-        if self._preferences.show_decoded_values and result.ambient_temperature_celsius is not None:
-            decoded_values.append(f"Ambient={result.ambient_temperature_celsius} °C")
-        if self._preferences.show_decoded_values and result.module_state is not None:
-            faults = result.module_state.active_faults()
-            decoded_values.append(f"Faults={', '.join(faults) if faults else 'none'}")
+        decoded_values = (
+            format_decoded_values(result, self._format_number)
+            if self._preferences.show_decoded_values
+            else []
+        )
         description = f" | {result.description}" if result.description else ""
         details = f" | {'; '.join(decoded_values)}" if decoded_values else ""
         diagnostics = (

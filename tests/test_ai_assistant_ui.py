@@ -427,6 +427,38 @@ def test_late_replies_are_dropped_after_a_provider_change(
     assert widget.status_label.text() == ""
 
 
+def test_forgetting_the_key_drops_the_reply_in_flight_and_the_last_answer(
+    qt_application: QApplication, tmp_path: Path
+) -> None:
+    del qt_application
+    harness = DeferredHarness(tmp_path, FakeKeys({"anthropic": ANTHROPIC_KEY}), FakeProvider("old"))
+    harness.frames.append(frame())
+    widget = harness.widget()
+    widget.answer.setPlainText("previous answer")
+    widget.question_input.setPlainText("why?")
+    widget.prepare()
+    widget.send()
+    widget.forget_key()
+    assert widget.answer.toPlainText() == ""
+    harness.pending[0]()
+    assert widget.answer.toPlainText() == ""
+    assert widget.status_label.text() == "Key forgotten"
+
+
+def test_saving_a_key_drops_a_test_still_in_flight(
+    qt_application: QApplication, tmp_path: Path
+) -> None:
+    del qt_application
+    harness = DeferredHarness(tmp_path, FakeKeys({"anthropic": ANTHROPIC_KEY}), FakeProvider())
+    widget = harness.widget()
+    widget.test_connection()
+    widget.key_input.setText(ANTHROPIC_KEY)
+    widget.save_key()
+    assert widget.test_button.isEnabled()
+    harness.pending[0]()
+    assert widget.status_label.text() == "Key saved"
+
+
 def test_test_button_is_reenabled_after_the_reply(
     qt_application: QApplication, tmp_path: Path
 ) -> None:

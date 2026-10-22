@@ -1,5 +1,6 @@
 """Pure Infypower charger CAN protocol decoding."""
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from struct import unpack
 
@@ -148,6 +149,46 @@ class DecodeResult:
     diagnostics: tuple[str, ...] = ()
     module_count: int | None = None
     module_group_number: int | None = None
+
+
+def format_decoded_values(result: DecodeResult, number: Callable[[float], str]) -> list[str]:
+    """Render every decoded value of ``result`` as short ``name=value unit`` items."""
+    values: list[str] = []
+    if (system := result.system_measurements) is not None:
+        values.append(
+            f"Vout={number(system.output_voltage_volts)} V, "
+            f"Iout={number(system.total_output_current_amperes)} A"
+        )
+    if (module := result.module_measurements) is not None:
+        values.append(
+            f"Module Vout={number(module.output_voltage_volts)} V, "
+            f"Iout={number(module.output_current_amperes)} A"
+        )
+    if (ac := result.ac_input_measurements) is not None:
+        values.append(
+            f"AC={number(ac.first_phase_voltage_volts)}/"
+            f"{number(ac.second_phase_voltage_volts)}/"
+            f"{number(ac.third_phase_voltage_volts)} V"
+        )
+    if (availability := result.module_availability) is not None:
+        values.append(f"Available={number(availability.available_current_amperes)} A")
+    if (ratings := result.module_ratings) is not None:
+        values.append(
+            f"Ratings={number(ratings.minimum_output_voltage_volts)}-"
+            f"{number(ratings.maximum_output_voltage_volts)} V, "
+            f"{number(ratings.maximum_output_current_amperes)} A, "
+            f"{number(ratings.rated_output_power_watts)} W"
+        )
+    if result.module_count is not None:
+        values.append(f"Modules={result.module_count}")
+    if result.module_group_number is not None:
+        values.append(f"Group={result.module_group_number}")
+    if result.ambient_temperature_celsius is not None:
+        values.append(f"Ambient={result.ambient_temperature_celsius} °C")
+    if result.module_state is not None:
+        faults = result.module_state.active_faults()
+        values.append(f"Faults={', '.join(faults) if faults else 'none'}")
+    return values
 
 
 class ProtocolDecoder:

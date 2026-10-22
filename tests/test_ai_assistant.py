@@ -132,6 +132,23 @@ def test_redaction_masks_undecoded_payloads_but_keeps_decoded_ones() -> None:
     assert "0x123" not in lines[2]
 
 
+def test_decoded_frames_carry_their_values_for_the_model() -> None:
+    payload = bytes.fromhex("42480000 41200000")  # 50.0 V, 10.0 A as big-endian floats
+    frames = [
+        captured(infypower_id(0x03, 0x01, 0x02), payload, 0.0),
+        captured(infypower_id(0x0B, 0x01, 0x02), b"SERIAL01", 0.1),
+    ]
+    lines = Redactor().redact(frames, RedactionOptions()).splitlines()
+    assert lines[0].endswith("decoded=[Module Vout=50.00 V, Iout=10.00 A]")
+    assert "decoded=" not in lines[1]
+
+
+def test_unmasked_undecoded_payload_has_no_decoded_values() -> None:
+    options = RedactionOptions(mask_undecoded_payloads=False)
+    line = Redactor().redact([captured(0x123, b"\x01", 0.0)], options)
+    assert line.endswith("data=01")
+
+
 def test_malformed_payload_of_a_decoded_command_stays_masked() -> None:
     frames = [captured(infypower_id(0x03, 0x01, 0x02), b"\xde\xad\xbe", 0.0)]
     line = Redactor().redact(frames, RedactionOptions())

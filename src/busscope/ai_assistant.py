@@ -14,7 +14,7 @@ from typing import Protocol
 from urllib.parse import urlsplit
 
 from busscope.analysis import CapturedFrame
-from busscope.protocol import DecodeResult
+from busscope.protocol import DecodeResult, format_decoded_values
 
 #: Infypower commands whose payload busscope decodes into measurements or state. Any other
 #: payload is unknown to us and may carry identity data (serial numbers), so it is masked.
@@ -28,6 +28,11 @@ SYSTEM_PROMPT = (
     "(M1, M2...). Answer in plain text, state your uncertainty, and never suggest "
     "transmitting frames on a live charger bus."
 )
+
+
+def _format_value(value: float) -> str:
+    """Fixed precision for the AI context, independent of the display preference."""
+    return f"{value:.2f}"
 
 
 def _payload_decoded(result: DecodeResult) -> bool:
@@ -210,7 +215,10 @@ class Redactor:
         else:
             payload = frame.data.hex(" ").upper()
         flags = " ERROR-FRAME" if frame.is_error_frame else ""
-        return f"{stamp} {head} data={payload}{flags}"
+        # Decoded values ground the answer: the prompt carries no byte/bit schema.
+        values = format_decoded_values(record.result, _format_value) if decoded else []
+        decoded_text = f" decoded=[{'; '.join(values)}]" if values else ""
+        return f"{stamp} {head} data={payload}{decoded_text}{flags}"
 
     @staticmethod
     def _address_namer(options: RedactionOptions, aliases: dict[int, str]) -> Callable[[int], str]:
