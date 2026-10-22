@@ -49,7 +49,7 @@ def create_capture_window() -> CaptureWindow:
     )
     window.tabs.addTab(assistant, "AI assistant")
     # The tab re-evaluates itself when shown; a capture change while it stays open too.
-    window.capture_changed.connect(assistant.refresh)
+    window.capture_changed.connect(assistant.on_capture_changed)
     return window
 
 

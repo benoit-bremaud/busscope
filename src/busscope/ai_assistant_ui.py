@@ -294,6 +294,11 @@ class AssistantWidget(QWidget):
         super().showEvent(event)
         self.refresh()
 
+    def on_capture_changed(self) -> None:
+        """A hidden tab waits for its showEvent: no keyring read while the operator captures."""
+        if self.isVisible():
+            self.refresh()
+
     def _on_provider_changed(self) -> None:
         """Show the controls of the newly chosen provider, then re-evaluate readiness."""
         self._show_provider_controls()

@@ -694,3 +694,28 @@ def test_prepare_is_disabled_while_a_request_is_pending(
     assert not widget.prepare_button.isEnabled()
     harness.pending[0]()
     assert widget.prepare_button.isEnabled()
+
+
+def test_a_capture_change_on_a_hidden_tab_does_not_touch_the_keyring(
+    qt_application: QApplication, tmp_path: Path
+) -> None:
+    del qt_application
+
+    class Counting(FakeKeys):
+        reads = 0
+
+        def get(self, provider_id: str) -> str | None:
+            Counting.reads += 1
+            return super().get(provider_id)
+
+    harness = Harness(tmp_path, Counting({"anthropic": ANTHROPIC_KEY}), FakeProvider())
+    widget = AssistantWidget(
+        harness.keys, harness.factory, harness.settings, lambda: harness.frames
+    )
+    harness.frames.append(frame())
+    widget.on_capture_changed()
+    assert Counting.reads == 0
+    widget.show()
+    assert Counting.reads == 1 and not widget.diagnosis.isHidden()
+    widget.on_capture_changed()
+    assert Counting.reads == 1  # cached once shown
