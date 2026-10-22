@@ -125,6 +125,7 @@ def _peek(payload: object, *path: str | int) -> str | None:
 
 
 _DECLINED = "The model declined to answer"
+_GEMINI_COMPLETE = frozenset({"STOP", "MAX_TOKENS"})
 
 
 def _mark_truncated(answer: str, truncated: bool) -> str:
@@ -224,12 +225,13 @@ class GoogleProvider:
             },
             _TIMEOUT_SECONDS,
         )
-        if _peek(reply, "candidates", 0, "finishReason") == "SAFETY":
+        finish = _peek(reply, "candidates", 0, "finishReason")
+        # Any other reason (SAFETY, RECITATION, BLOCKLIST, SPII...) is a filter: partial
+        # text must not pass as an answer.
+        if finish is not None and finish not in _GEMINI_COMPLETE:
             raise ProviderError(_DECLINED)
         answer = _dig(reply, "candidates", 0, "content", "parts", 0, "text")
-        return _mark_truncated(
-            answer, _peek(reply, "candidates", 0, "finishReason") == "MAX_TOKENS"
-        )
+        return _mark_truncated(answer, finish == "MAX_TOKENS")
 
 
 def build_provider(

@@ -319,8 +319,7 @@ class AssistantWidget(QWidget):
         self.status_label.clear()
         self.answer.clear()
         self.answer.setVisible(False)
-        self.send_button.setEnabled(True)
-        self.test_button.setEnabled(True)
+        self._set_busy(False)
 
     def _save_choices(self) -> None:
         """Persist non-secret choices; the key is never written here."""
@@ -434,7 +433,7 @@ class AssistantWidget(QWidget):
         """Send a minimal request in the background."""
         service, spec, model = self._service(), self.spec, self.model_input.text()
         self.status_label.setText("Testing…")
-        self.test_button.setEnabled(False)
+        self._set_busy(True)
         self._runner(
             lambda: service.test_connection(spec, model),
             self._current(lambda _answer: self._test_done("Connection OK")),
@@ -453,9 +452,14 @@ class AssistantWidget(QWidget):
         return guarded
 
     def _test_done(self, status: str) -> None:
-        """Show the test outcome and allow another test."""
+        """Show the test outcome and allow another request."""
         self.status_label.setText(status)
-        self.test_button.setEnabled(True)
+        self._set_busy(False)
+
+    def _set_busy(self, busy: bool) -> None:
+        """One request at a time: a test and a diagnosis share the status line."""
+        self.test_button.setEnabled(not busy)
+        self.send_button.setEnabled(not busy)
 
     def _options(self) -> RedactionOptions:
         """Redaction options from the checkboxes."""
@@ -498,7 +502,7 @@ class AssistantWidget(QWidget):
             return
         service, spec, model = self._service(), self.spec, self.model_input.text()
         self.status_label.setText("Waiting for the answer…")
-        self.send_button.setEnabled(False)
+        self._set_busy(True)
         self._runner(
             lambda: service.ask(request, spec, model),
             self._current(self._on_answer),
@@ -510,9 +514,9 @@ class AssistantWidget(QWidget):
         self.answer.setPlainText(text)
         self.answer.setVisible(True)
         self.status_label.setText("Answer received")
-        self.send_button.setEnabled(True)
+        self._set_busy(False)
 
     def _on_error(self, message: str) -> None:
         """Show a key-free error and allow a retry."""
         self.status_label.setText(f"Error: {message}")
-        self.send_button.setEnabled(True)
+        self._set_busy(False)

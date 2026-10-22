@@ -194,6 +194,18 @@ def test_truncated_answers_are_flagged(provider: type, reply: object, expected: 
         (AnthropicProvider, {"content": [], "stop_reason": "refusal"}),
         (GoogleProvider, {"candidates": [{"finishReason": "SAFETY"}]}),
         (
+            GoogleProvider,
+            {
+                "candidates": [
+                    {"content": {"parts": [{"text": "partial"}]}, "finishReason": "RECITATION"}
+                ]
+            },
+        ),
+        (
+            GoogleProvider,
+            {"candidates": [{"content": {"parts": [{"text": "partial"}]}, "finishReason": "SPII"}]},
+        ),
+        (
             OpenAiCompatibleProvider,
             {"choices": [{"message": {"content": "partial"}, "finish_reason": "content_filter"}]},
         ),

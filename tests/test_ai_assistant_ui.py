@@ -626,3 +626,23 @@ def test_invalidation_clears_a_waiting_status(qt_application: QApplication, tmp_
     assert widget.status_label.text() == "Waiting for the answer…"
     widget.question_input.setPlainText("other?")
     assert widget.status_label.isHidden()
+
+
+def test_a_test_and_a_diagnosis_never_run_at_the_same_time(
+    qt_application: QApplication, tmp_path: Path
+) -> None:
+    del qt_application
+    harness = DeferredHarness(tmp_path, FakeKeys({"anthropic": ANTHROPIC_KEY}), FakeProvider("ok"))
+    harness.frames.append(frame())
+    widget = harness.widget()
+    widget.question_input.setPlainText("why?")
+    widget.prepare()
+    widget.test_connection()
+    assert not widget.send_button.isEnabled()
+    harness.pending[0]()
+    assert widget.send_button.isEnabled() and widget.test_button.isEnabled()
+    widget.send()
+    assert not widget.test_button.isEnabled()
+    harness.pending[1]()
+    assert widget.test_button.isEnabled()
+    assert widget.status_label.text() == "Answer received"
