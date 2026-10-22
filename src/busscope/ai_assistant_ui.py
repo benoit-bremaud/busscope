@@ -10,6 +10,7 @@ from __future__ import annotations
 from collections.abc import Callable, Sequence
 
 from PySide6.QtCore import QObject, QRunnable, QSettings, QSignalBlocker, Qt, QThreadPool, Signal
+from PySide6.QtGui import QShowEvent
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -129,6 +130,7 @@ class AssistantWidget(QWidget):
         provider_factory: ProviderFactory,
         settings: QSettings,
         frames: Callable[[], Sequence[CapturedFrame]],
+        capture_id: Callable[[], int] = lambda: 0,
         runner: Runner = thread_pool_runner,
         confirm: Confirm = ask_confirmation,
     ) -> None:
@@ -138,6 +140,7 @@ class AssistantWidget(QWidget):
         self._provider_factory = provider_factory
         self._settings = settings
         self._frames = frames
+        self._capture_id = capture_id
         self._runner = runner
         self._confirm = confirm
         self._request: DiagnosisRequest | None = None
@@ -145,7 +148,7 @@ class AssistantWidget(QWidget):
         self._key_present: dict[str, bool] = {}
         # Bumped on provider change so a late reply never lands under another provider.
         self._generation = 0
-        self._capture_marker: tuple[int, float] | None = None
+        self._capture_marker: tuple[int, int] | None = None
 
         self.provider_input = QComboBox()
         self.provider_input.setAccessibleName("AI provider")
@@ -255,7 +258,7 @@ class AssistantWidget(QWidget):
         for box in (self.anonymise_input, self.relative_time_input, self.mask_input):
             box.toggled.connect(lambda _checked: self._reset_preview())
         self.send_button.clicked.connect(self.send)
-        self._on_provider_changed()
+        self._show_provider_controls()
 
     @staticmethod
     def _row(label: str, field: QWidget) -> QWidget:
@@ -287,8 +290,18 @@ class AssistantWidget(QWidget):
         provider = self._provider_factory(self.spec.id, self._endpoint())
         return DiagnosisService({self.spec.id: provider}, self._keys)
 
+    def showEvent(self, event: QShowEvent) -> None:  # noqa: N802  # Qt override
+        """Readiness (keyring, capture) is evaluated once the tab is shown, never at startup."""
+        super().showEvent(event)
+        self.refresh()
+
     def _on_provider_changed(self) -> None:
-        """Show the controls of the newly chosen provider."""
+        """Show the controls of the newly chosen provider, then re-evaluate readiness."""
+        self._show_provider_controls()
+        self.refresh()
+
+    def _show_provider_controls(self) -> None:
+        """Show the controls of the chosen provider without touching the keyring."""
         spec = self.spec
         model = self._settings.value(f"{self._PREFIX}model/{spec.id}")
         self.model_input.setText(model if isinstance(model, str) else spec.default_model)
@@ -306,7 +319,6 @@ class AssistantWidget(QWidget):
         self.status_label.clear()
         self._invalidate_pending()
         self._save_choices()
-        self.refresh()
 
     def _on_setup_edited(self) -> None:
         """A new model or endpoint: drop the preview and any reply still in flight."""
@@ -342,14 +354,15 @@ class AssistantWidget(QWidget):
 
     def refresh(self) -> None:
         """Re-evaluate what is shown: called on provider, key or capture changes."""
-        ready = not self.spec.needs_key or self._has_key()
         frames = self._frames()
         has_frames = bool(frames)
-        # A different capture voids the answer: it described frames no longer shown.
-        marker = (len(frames), frames[-1].timestamp_seconds) if frames else None
+        # Another capture, or more frames of this one, voids the answer: it described frames
+        # no longer shown. The identity comes from the capture side, never from frame content.
+        marker = (self._capture_id(), len(frames))
         if marker != self._capture_marker:
             self._capture_marker = marker
             self._invalidate_pending()
+        ready = not self.spec.needs_key or self._has_key()
         if self.spec.needs_key:
             self.key_state.setText("Key stored in the OS keyring" if ready else "No key stored")
             self.forget_key_button.setVisible(ready)
@@ -460,6 +473,8 @@ class AssistantWidget(QWidget):
         """One request at a time: a test and a diagnosis share the status line."""
         self.test_button.setEnabled(not busy)
         self.send_button.setEnabled(not busy)
+        # Rebuilding the request meanwhile would show the reply under frames never sent.
+        self.prepare_button.setEnabled(not busy)
 
     def _options(self) -> RedactionOptions:
         """Redaction options from the checkboxes."""

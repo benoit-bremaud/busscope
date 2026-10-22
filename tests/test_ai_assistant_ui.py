@@ -67,6 +67,7 @@ class Harness:
     def __init__(self, tmp_path: Path, keys: FakeKeys, provider: FakeProvider) -> None:
         self.settings = QSettings(str(tmp_path / "s.ini"), QSettings.Format.IniFormat)
         self.frames: list[CapturedFrame] = []
+        self.capture_id = 0
         self.confirm_answer = True
         self.confirm_messages: list[str] = []
         self.endpoints: list[tuple[str, str]] = []
@@ -91,14 +92,17 @@ class Harness:
             error(str(failure))
 
     def widget(self) -> AssistantWidget:
-        return AssistantWidget(
+        widget = AssistantWidget(
             self.keys,
             self.factory,
             self.settings,
             lambda: self.frames,
+            lambda: self.capture_id,
             runner=self.runner,
             confirm=self.confirm,
         )
+        widget.refresh()  # what showing the tab does in production
+        return widget
 
 
 def frame() -> CapturedFrame:
@@ -394,16 +398,6 @@ class DeferredHarness(Harness):
         answer = work()
         self.pending.append(lambda: done(answer))
 
-    def widget(self) -> AssistantWidget:
-        return AssistantWidget(
-            self.keys,
-            self.factory,
-            self.settings,
-            lambda: self.frames,
-            runner=self.runner,
-            confirm=self.confirm,
-        )
-
 
 def test_late_replies_are_dropped_after_a_provider_change(
     qt_application: QApplication, tmp_path: Path
@@ -549,6 +543,7 @@ def test_a_new_capture_drops_the_previous_answer_and_replies_in_flight(
     widget.prepare()
     widget.send()
     harness.frames[:] = [CapturedFrame(9.0, frame().result)]
+    harness.capture_id += 1
     widget.refresh()
     harness.pending[0]()
     assert widget.answer.isHidden() and widget.answer.toPlainText() == ""
@@ -646,3 +641,56 @@ def test_a_test_and_a_diagnosis_never_run_at_the_same_time(
     harness.pending[1]()
     assert widget.test_button.isEnabled()
     assert widget.status_label.text() == "Answer received"
+
+
+def test_the_keyring_is_only_read_once_the_tab_is_shown(
+    qt_application: QApplication, tmp_path: Path
+) -> None:
+    del qt_application
+
+    class Counting(FakeKeys):
+        reads = 0
+
+        def get(self, provider_id: str) -> str | None:
+            Counting.reads += 1
+            return super().get(provider_id)
+
+    harness = Harness(tmp_path, Counting({"anthropic": ANTHROPIC_KEY}), FakeProvider())
+    widget = AssistantWidget(
+        harness.keys, harness.factory, harness.settings, lambda: harness.frames
+    )
+    assert Counting.reads == 0
+    widget.show()
+    assert Counting.reads == 1
+    assert widget.key_state.text() == "Key stored in the OS keyring"
+
+
+def test_two_captures_of_equal_length_are_told_apart(
+    qt_application: QApplication, tmp_path: Path
+) -> None:
+    del qt_application
+    harness = Harness(tmp_path, FakeKeys({"anthropic": ANTHROPIC_KEY}), FakeProvider("first"))
+    harness.frames.append(frame())
+    widget = harness.widget()
+    widget.question_input.setPlainText("why?")
+    widget.prepare()
+    widget.send()
+    harness.frames[:] = [frame()]  # same count, same last timestamp
+    harness.capture_id += 1
+    widget.refresh()
+    assert widget.answer.isHidden()
+
+
+def test_prepare_is_disabled_while_a_request_is_pending(
+    qt_application: QApplication, tmp_path: Path
+) -> None:
+    del qt_application
+    harness = DeferredHarness(tmp_path, FakeKeys({"anthropic": ANTHROPIC_KEY}), FakeProvider())
+    harness.frames.append(frame())
+    widget = harness.widget()
+    widget.question_input.setPlainText("why?")
+    widget.prepare()
+    widget.send()
+    assert not widget.prepare_button.isEnabled()
+    harness.pending[0]()
+    assert widget.prepare_button.isEnabled()

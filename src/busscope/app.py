@@ -41,13 +41,15 @@ def create_capture_window() -> CaptureWindow:
     transmission_widget = TransmissionWidget(transmitter)
     window = CaptureWindow(session, preferences, settings_widget, transmission_widget)
     assistant = AssistantWidget(
-        KeyringKeyStore(), build_provider, QSettings(), window.captured_frames
+        KeyringKeyStore(),
+        build_provider,
+        QSettings(),
+        window.captured_frames,
+        window.capture_generation,
     )
     window.tabs.addTab(assistant, "AI assistant")
-    # Re-check readiness whenever the tab is opened: the capture may have changed meanwhile.
-    window.tabs.currentChanged.connect(
-        lambda index: assistant.refresh() if window.tabs.widget(index) is assistant else None
-    )
+    # The tab re-evaluates itself when shown; a capture change while it stays open too.
+    window.capture_changed.connect(assistant.refresh)
     return window
 
 

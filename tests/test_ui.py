@@ -1165,3 +1165,30 @@ def test_status_messages_wrap_to_the_window_width(qt_application: QApplication) 
     window = create_test_window(FakeController([]))
 
     assert window.status_label.wordWrap() is True
+
+
+def test_capture_changed_fires_on_source_changes_and_on_the_first_frame(
+    qt_application: QApplication, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    del qt_application
+    source = tmp_path / "capture.csv"
+    source.write_text(
+        "timestamp_seconds,arbitration_id,is_extended_id,is_error_frame,data,description,"
+        "decoded_values,diagnostics\n"
+        "0.000000,0x0284F001,true,false,00 00 02 00 1B 00 40 00,Stored,Group=99,\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        "busscope.ui.QFileDialog.getOpenFileName",
+        lambda *args: (str(source), "CSV files (*.csv)"),
+    )
+    window = create_test_window(FakeController([]))
+    start = window.capture_generation()
+    seen: list[int] = []
+    window.capture_changed.connect(lambda: seen.append(window.capture_generation()))
+    window.set_mode(ToolbarMode.REPLAY)
+    window.load_replay()
+    window.set_mode(ToolbarMode.REPLAY)  # no change: silent
+    assert seen == [start + 1, start + 2]
+    window.reset_replay()
+    assert seen == [start + 1, start + 2, start + 3]

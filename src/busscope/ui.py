@@ -5,7 +5,7 @@ import time
 from pathlib import Path
 from typing import Protocol
 
-from PySide6.QtCore import Qt, QTimer
+from PySide6.QtCore import Qt, QTimer, Signal
 from PySide6.QtGui import QAction, QKeySequence, QPalette
 from PySide6.QtWidgets import (
     QAbstractButton,
@@ -82,6 +82,9 @@ class CaptureWindow(QMainWindow):
 
     _MAX_FRAMES_PER_TICK = 100
     _MAX_DISPLAYED_FRAMES = 10_000
+    # Emitted when the frames exposed by captured_frames() are another capture, or when the
+    # first frame of a capture arrives: read-only consumers re-evaluate what they show.
+    capture_changed = Signal()
 
     def __init__(
         self,
@@ -106,6 +109,7 @@ class CaptureWindow(QMainWindow):
         self._capture_origin: float | None = None
         self._channel = ""
         self._records: list[CapturedFrame] = []
+        self._capture_generation = 0
         self._display_start_index = 0
         self._replay = ReplayController()
         self._replay_last_tick = 0.0
@@ -291,6 +295,15 @@ class CaptureWindow(QMainWindow):
             return self._replay.records
         return tuple(self._records)
 
+    def capture_generation(self) -> int:
+        """Identity of the capture behind captured_frames(): bumped on every source change."""
+        return self._capture_generation
+
+    def _new_capture(self) -> None:
+        """Record that captured_frames() now describes another capture."""
+        self._capture_generation += 1
+        self.capture_changed.emit()
+
     def features(self) -> frozenset[Feature]:
         """Features the chosen protocol resolves from the catalogue; none before a pick."""
         protocol = self.protocol_selector.selected
@@ -416,8 +429,9 @@ class CaptureWindow(QMainWindow):
     def set_mode(self, mode: ToolbarMode) -> None:
         """Switch to ``mode`` if the protocol offers it and no source is running."""
         running = self._mode is not None and not can_switch_mode(self._toolbar_state(self._mode))
-        if mode in self._sources() and not running:
+        if mode in self._sources() and not running and mode is not self._mode:
             self._mode = mode
+            self._new_capture()
         self._check_mode_button()
         self._sync_toolbar()
 
@@ -634,6 +648,7 @@ class CaptureWindow(QMainWindow):
         self._replay_active = False
         self._sync_toolbar()
         self.frame_list.clear()
+        self._new_capture()
         self.statistics_list.clear()
         self.status_label.setText(f"Loaded {len(records)} replay frame(s)")
 
@@ -685,6 +700,7 @@ class CaptureWindow(QMainWindow):
         self._replay_active = False
         self._sync_toolbar()
         self.status_label.setText("Replay reset")
+        self._new_capture()
 
     def _advance_replay(self) -> None:
         """Release replay records that became due since the last tick, then stop at the end."""
@@ -693,7 +709,7 @@ class CaptureWindow(QMainWindow):
         due = self._replay.advance(now - self._replay_last_tick)
         self._replay_last_tick = now
         for captured in due:
-            self._records.append(captured)
+            self._append_record(captured)
             if not self._display_paused and self._frame_filter.matches(captured):
                 self._add_to_display(captured)
         if was_playing and not self._replay.is_playing:
@@ -766,9 +782,16 @@ class CaptureWindow(QMainWindow):
                 logger.error("Cannot timestamp a frame without a capture origin")
                 return
             captured = CapturedFrame(time.monotonic() - capture_origin, result)
-            self._records.append(captured)
+            self._append_record(captured)
             if not self._display_paused and self._frame_filter.matches(captured):
                 self._add_to_display(captured)
+
+    def _append_record(self, captured: CapturedFrame) -> None:
+        """Keep the frame; the first one makes the capture usable by read-only consumers."""
+        first = not self._records
+        self._records.append(captured)
+        if first:
+            self.capture_changed.emit()
 
     def _add_to_display(self, captured: CapturedFrame) -> None:
         """Append one row and drop the oldest beyond the display cap."""
