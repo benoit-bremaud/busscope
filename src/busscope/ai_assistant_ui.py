@@ -99,6 +99,25 @@ def ask_confirmation(parent: QWidget, message: str) -> bool:
     return answer == QMessageBox.StandardButton.Yes
 
 
+class _MessageLabel(QLabel):
+    """A label that takes no room while it has nothing to say."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.setWordWrap(True)
+        self.setVisible(False)
+
+    def setText(self, text: str) -> None:  # noqa: N802  # Qt override
+        """Show the label only when the text is not empty."""
+        super().setText(text)
+        self.setVisible(bool(text))
+
+    def clear(self) -> None:
+        """Clearing hides the label."""
+        super().clear()
+        self.setVisible(False)
+
+
 class AssistantWidget(QWidget):
     """Provider setup, payload preview and question/answer for one capture."""
 
@@ -158,8 +177,7 @@ class AssistantWidget(QWidget):
         key_layout.addWidget(self.key_state)
 
         self.test_button = QPushButton("Test connection")
-        self.status_label = QLabel()
-        self.status_label.setWordWrap(True)
+        self.status_label = _MessageLabel()
 
         self.question_input = QPlainTextEdit()
         self.question_input.setAccessibleName("Diagnosis question")
@@ -202,7 +220,7 @@ class AssistantWidget(QWidget):
         diagnosis_layout.addWidget(self.destination_label)
         diagnosis_layout.addWidget(self.send_button)
         diagnosis_layout.addWidget(self.answer)
-        self.waiting_label = QLabel()
+        self.waiting_label = _MessageLabel()
 
         form = QFormLayout()
         form.addRow("Provider:", self.provider_input)

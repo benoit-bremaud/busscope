@@ -566,3 +566,18 @@ def test_reopening_the_tab_on_the_same_capture_keeps_the_answer(
     widget.send()
     widget.refresh()
     assert widget.answer.toPlainText() == "kept" and not widget.answer.isHidden()
+
+
+def test_empty_messages_take_no_room(qt_application: QApplication, tmp_path: Path) -> None:
+    del qt_application
+    harness = Harness(tmp_path, FakeKeys({"anthropic": ANTHROPIC_KEY}), FakeProvider())
+    harness.frames.append(frame())
+    widget = harness.widget()
+    assert widget.status_label.isHidden() and widget.waiting_label.isHidden()
+    widget.test_connection()
+    assert not widget.status_label.isHidden()
+    select(widget, "local")
+    assert widget.status_label.isHidden()
+    harness.frames.clear()
+    widget.refresh()
+    assert not widget.waiting_label.isHidden()
