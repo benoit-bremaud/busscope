@@ -150,21 +150,20 @@ ordinary commits from that PR's branch.
   checkbox` (`fix/84-wrap-status-message`, closes #84). Long status messages wrap instead of
   widening the window. Codex P1 fixed in `e2319a0`: never recommend `slcand -l` for a live bus —
   only verified native SocketCAN interfaces are suggested for live capture.
-- **PR #98 merged** (`19ee464`) — `feat(ai): multi-provider AI diagnosis assistant`
-  (`feat/83-ai-assistant`, closes #83, merged 2026-10-22). New "AI assistant" tab: Anthropic
-  (default `claude-opus-5-5`), OpenAI, Mistral, Google and local OpenAI-compatible models through
-  stdlib HTTP adapters behind a Qt-free `LlmProvider` port; API key only in the OS keyring
+- **PR #98 merged** (`19ee464`) — `feat(ai): multi-provider AI assistant for diagnosis and
+  debugging` (`feat/83-ai-assistant`, closes #83, merged 2026-10-22). New "AI assistant" tab:
+  Anthropic (default `claude-opus-5-5`), OpenAI, Mistral, Google and local OpenAI-compatible models
+  through stdlib HTTP adapters behind a Qt-free `LlmProvider` port; API key only in the OS keyring
   (`busscope-ai`); every send is previewed (redacted: pseudonymised addresses, relative time,
-  payloads masked unless actually decoded) and confirmed. TLS required off-PC, no redirects,
-  proxies bypassed for loopback. Review: two Opus critical reviews (7 + 8 fixes, `841939c`,
-  `2939ede`), then nine Codex rounds (1 P1 + ~20 P2, all fixed). Main outcomes: no raw payload
-  bytes are sent when masking is on; explicit capture identity (`CaptureWindow.capture_generation`
-  + `capture_changed`) so the assistant sees only the current source's records; the keyring is
-  read only on the tab's first show, never at startup or from a capture change while the tab is
-  hidden; context-window truncation is flagged and every Gemini text part is read;
-  progressive-disclosure UI. Final gate on `7821429`: 416 tests, coverage 98.9 %, interrogate
-  96.1 %, SonarQube PASSED. Note: the non-Anthropic wire formats come from public docs (Context7
-  quota was exhausted).
+  payloads masked unless actually decoded) and confirmed. TLS required off-PC, no redirects, proxies
+  bypassed for loopback. Review: two Opus critical reviews (7 + 8 fixes, `841939c`, `2939ede`), then
+  nine Codex rounds (1 P1 + ~20 P2, all fixed). Main outcomes: no raw payload bytes are sent when
+  masking is on; explicit capture identity (`CaptureWindow.capture_generation` + `capture_changed`)
+  so the assistant sees only the current source's records; the keyring is read only on the tab's
+  first show, never at startup or from a capture change while the tab is hidden; context-window
+  truncation is flagged and every Gemini text part is read; progressive-disclosure UI. Final gate on
+  `7821429`: 416 tests, coverage 98.9 %, interrogate 96.1 %, SonarQube PASSED. Note: the
+  non-Anthropic wire formats come from public docs (Context7 quota was exhausted).
 - **PR #101 merged** (`5bfa78a`) — `test(quality): fix the findings of the upgraded SonarQube
   Python profile` (`test/100-sonar-python-profile`, closes #100, merged 2026-10-23). The local
   SonarQube server came back as 26.10 with 69 new Python rules, which flagged 31 spots in existing
@@ -174,7 +173,7 @@ ordinary commits from that PR's branch.
   96.1 %, SonarQube PASSED with 0 new issues, QA smoke screenshots in
   `docs/architecture/qa/100-sonar-python-profile/`; Codex found no issue. The SonarQube project
   key was renamed `can_sniffer` → `busscope` on the server (`api/projects/update_key`, history
-  kept) as part of #99.
+  kept) and GitHub Project #64 from "can-sniffer" to "busscope", both as part of #99.
 - **Backlog triage 2026-10-23** (owner decisions): #96 moves right after #95 (MCDA 410/500,
   fallback: after #89 with #97); #74 split into one decoder issue each (#102 J1939, #103 CANopen,
   #104 CHAdeMO, #105 Modbus RTU/TCP); the icon cache and recolour items of #71 move to #87; #80
