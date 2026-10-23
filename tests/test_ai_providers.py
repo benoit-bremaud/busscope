@@ -83,8 +83,9 @@ def test_anthropic_request_shape_and_answer() -> None:
 
 @pytest.mark.parametrize("reply", [{"content": []}, {"content": "x"}, ["x"]])
 def test_anthropic_without_text_is_an_error(reply: object) -> None:
+    provider = AnthropicProvider("https://a", RecordingOpener(reply))
     with pytest.raises(ProviderError):
-        AnthropicProvider("https://a", RecordingOpener(reply)).complete("s", "p", "m", SECRET)
+        provider.complete("s", "p", "m", SECRET)
 
 
 def test_openai_compatible_request_shape_with_and_without_key() -> None:
@@ -117,8 +118,9 @@ def test_google_request_shape() -> None:
 
 @pytest.mark.parametrize("reply", [{}, {"choices": []}, {"choices": [{"message": {"content": 3}}]}])
 def test_unexpected_reply_format(reply: object) -> None:
+    provider = OpenAiCompatibleProvider("https://o", RecordingOpener(reply))
     with pytest.raises(ProviderError, match="Unexpected"):
-        OpenAiCompatibleProvider("https://o", RecordingOpener(reply)).complete("s", "p", "m", "k")
+        provider.complete("s", "p", "m", "k")
 
 
 @pytest.mark.parametrize(
@@ -138,15 +140,17 @@ def test_unexpected_reply_format(reply: object) -> None:
     ],
 )
 def test_transport_errors_are_key_free(error: BaseException, expected: str) -> None:
+    provider = AnthropicProvider("https://a", RecordingOpener(error=error))
     with pytest.raises(ProviderError, match=expected) as caught:
-        AnthropicProvider("https://a", RecordingOpener(error=error)).complete("s", "p", "m", SECRET)
+        provider.complete("s", "p", "m", SECRET)
     assert SECRET not in str(caught.value)
     assert caught.value.__cause__ is None
 
 
 def test_invalid_json_reply() -> None:
+    provider = AnthropicProvider("https://a", RecordingOpener(b"not json"))
     with pytest.raises(ProviderError, match="invalid reply"):
-        AnthropicProvider("https://a", RecordingOpener(b"not json")).complete("s", "p", "m", "k")
+        provider.complete("s", "p", "m", "k")
 
 
 @pytest.mark.parametrize(
@@ -220,8 +224,9 @@ def test_truncated_answers_are_flagged(provider: type, reply: object, expected: 
     ],
 )
 def test_refusals_are_explicit(provider: type, reply: object) -> None:
+    adapter = provider("https://x", RecordingOpener(reply))
     with pytest.raises(ProviderError, match="declined"):
-        provider("https://x", RecordingOpener(reply)).complete("s", "p", "m", "k")
+        adapter.complete("s", "p", "m", "k")
 
 
 def test_scheme_check_is_case_insensitive() -> None:
@@ -234,8 +239,9 @@ def test_scheme_check_is_case_insensitive() -> None:
 @pytest.mark.parametrize("endpoint", ["file:///etc", "http://192.168.1.5:11434/v1", "ftp://x"])
 def test_unsafe_endpoint_is_refused_before_any_request(endpoint: str) -> None:
     opener = RecordingOpener({})
+    provider = OpenAiCompatibleProvider(endpoint, opener)
     with pytest.raises(ProviderError, match="https"):
-        OpenAiCompatibleProvider(endpoint, opener).complete("s", "p", "m", None)
+        provider.complete("s", "p", "m", None)
     assert opener.requests == []
 
 
@@ -270,7 +276,8 @@ def test_local_opener_ignores_proxies_and_no_opener_follows_redirects() -> None:
         redirects = [
             h for h in handlers(opener) if isinstance(h, urllib.request.HTTPRedirectHandler)
         ]
-        assert redirects and all(isinstance(h, ai_providers._NoRedirect) for h in redirects)
+        assert redirects
+        assert all(isinstance(h, ai_providers._NoRedirect) for h in redirects)
     ai_providers._NoRedirect().redirect_request()  # returns None: the redirect is refused
     # An empty ProxyHandler registers no proxy routes, and it replaces the env-reading default.
     proxied = [
@@ -366,5 +373,6 @@ def test_gemini_concatenates_every_text_part() -> None:
 
 def test_gemini_without_text_parts_is_an_error() -> None:
     reply = {"candidates": [{"content": {"parts": [{"inlineData": {}}]}, "finishReason": "STOP"}]}
+    provider = GoogleProvider("https://x", RecordingOpener(reply))
     with pytest.raises(ProviderError, match="no text"):
-        GoogleProvider("https://x", RecordingOpener(reply)).complete("s", "p", "m", "k")
+        provider.complete("s", "p", "m", "k")

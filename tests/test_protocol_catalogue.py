@@ -61,21 +61,24 @@ def test_get_unknown_key_raises_key_error() -> None:
 
 
 def test_duplicate_keys_are_rejected() -> None:
+    protocols = (Protocol("a", "A", "", Transport.CAN), Protocol("a", "B", "", Transport.CAN))
     with pytest.raises(CatalogueError, match="duplicate"):
-        _catalogue(Protocol("a", "A", "", Transport.CAN), Protocol("a", "B", "", Transport.CAN))
+        _catalogue(*protocols)
 
 
 def test_unknown_carrier_is_rejected() -> None:
+    orphan = Protocol("a", "A", "", Transport.CAN, carried_by="ghost")
     with pytest.raises(CatalogueError, match="unknown"):
-        _catalogue(Protocol("a", "A", "", Transport.CAN, carried_by="ghost"))
+        _catalogue(orphan)
 
 
 def test_carrier_cycle_is_rejected() -> None:
+    protocols = (
+        Protocol("a", "A", "", Transport.CAN, carried_by="b"),
+        Protocol("b", "B", "", Transport.CAN, carried_by="a"),
+    )
     with pytest.raises(CatalogueError, match="cycle"):
-        _catalogue(
-            Protocol("a", "A", "", Transport.CAN, carried_by="b"),
-            Protocol("b", "B", "", Transport.CAN, carried_by="a"),
-        )
+        _catalogue(*protocols)
 
 
 def test_every_default_carrier_exists() -> None:
@@ -133,18 +136,21 @@ def test_features_fold_over_arbitrary_depth_with_add_and_remove() -> None:
 
 
 def test_removing_a_feature_not_inherited_is_rejected() -> None:
+    protocol = _available("a", removes=frozenset({Feature.STATISTICS}))
     with pytest.raises(CatalogueError, match="does not inherit"):
-        _catalogue(_available("a", removes=frozenset({Feature.STATISTICS})))
+        _catalogue(protocol)
 
 
 def test_empty_group_is_rejected() -> None:
+    root = Group("root", "Root", (Group("g", "G", ()),))
     with pytest.raises(CatalogueError, match="empty group"):
-        ProtocolCatalogue(Group("root", "Root", (Group("g", "G", ()),)))
+        ProtocolCatalogue(root)
 
 
 def test_group_and_protocol_keys_share_one_namespace() -> None:
+    clashing = _available("f")
     with pytest.raises(CatalogueError, match="duplicate"):
-        _catalogue(_available("f"))
+        _catalogue(clashing)
 
 
 def test_unknown_key_has_no_path_or_features() -> None:

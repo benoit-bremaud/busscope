@@ -333,5 +333,6 @@ def test_accepting_the_risk_never_relaxes_socketcan() -> None:
     """The acceptance covers an unverifiable backend, not a verifiable one that failed."""
     adapter = PythonCanAdapter(lambda configuration: FakeBus([]), FakeControllerMode(False))
 
+    configuration = CaptureConfiguration(channel="can0", allow_unverified_listen_only=True)
     with pytest.raises(ListenOnlyUnavailableError, match="not in listen-only"):
-        adapter.open(CaptureConfiguration(channel="can0", allow_unverified_listen_only=True))
+        adapter.open(configuration)

@@ -414,7 +414,8 @@ def test_late_replies_are_dropped_after_a_provider_change(
     widget.send()
     assert not widget.send_button.isEnabled()
     select(widget, "local")
-    assert widget.test_button.isEnabled() and widget.send_button.isEnabled()
+    assert widget.test_button.isEnabled()
+    assert widget.send_button.isEnabled()
     for release in harness.pending:
         release()
     assert widget.answer.toPlainText() == ""
@@ -546,7 +547,8 @@ def test_a_new_capture_drops_the_previous_answer_and_replies_in_flight(
     harness.capture_id += 1
     widget.refresh()
     harness.pending[0]()
-    assert widget.answer.isHidden() and widget.answer.toPlainText() == ""
+    assert widget.answer.isHidden()
+    assert widget.answer.toPlainText() == ""
 
 
 def test_reopening_the_tab_on_the_same_capture_keeps_the_answer(
@@ -560,7 +562,8 @@ def test_reopening_the_tab_on_the_same_capture_keeps_the_answer(
     widget.prepare()
     widget.send()
     widget.refresh()
-    assert widget.answer.toPlainText() == "kept" and not widget.answer.isHidden()
+    assert widget.answer.toPlainText() == "kept"
+    assert not widget.answer.isHidden()
 
 
 def test_empty_messages_take_no_room(qt_application: QApplication, tmp_path: Path) -> None:
@@ -568,7 +571,8 @@ def test_empty_messages_take_no_room(qt_application: QApplication, tmp_path: Pat
     harness = Harness(tmp_path, FakeKeys({"anthropic": ANTHROPIC_KEY}), FakeProvider())
     harness.frames.append(frame())
     widget = harness.widget()
-    assert widget.status_label.isHidden() and widget.waiting_label.isHidden()
+    assert widget.status_label.isHidden()
+    assert widget.waiting_label.isHidden()
     widget.test_connection()
     assert not widget.status_label.isHidden()
     select(widget, "local")
@@ -590,7 +594,8 @@ def test_editing_the_question_drops_the_answer_and_the_reply_in_flight(
     widget.send()
     widget.question_input.setPlainText("second?")
     harness.pending[0]()
-    assert widget.answer.isHidden() and widget.answer.toPlainText() == ""
+    assert widget.answer.isHidden()
+    assert widget.answer.toPlainText() == ""
     assert widget.send_button.isEnabled()
 
 
@@ -635,7 +640,8 @@ def test_a_test_and_a_diagnosis_never_run_at_the_same_time(
     widget.test_connection()
     assert not widget.send_button.isEnabled()
     harness.pending[0]()
-    assert widget.send_button.isEnabled() and widget.test_button.isEnabled()
+    assert widget.send_button.isEnabled()
+    assert widget.test_button.isEnabled()
     widget.send()
     assert not widget.test_button.isEnabled()
     harness.pending[1]()
@@ -716,6 +722,7 @@ def test_a_capture_change_on_a_hidden_tab_does_not_touch_the_keyring(
     widget.on_capture_changed()
     assert Counting.reads == 0
     widget.show()
-    assert Counting.reads == 1 and not widget.diagnosis.isHidden()
+    assert Counting.reads == 1
+    assert not widget.diagnosis.isHidden()
     widget.on_capture_changed()
     assert Counting.reads == 1  # cached once shown

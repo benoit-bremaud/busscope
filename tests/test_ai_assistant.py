@@ -116,7 +116,8 @@ def test_redaction_pseudonymises_addresses_consistently_and_keeps_broadcast() ->
     assert "dst=ALL src=M3" in lines[2]
     assert lines[0].startswith("t=+0.000s")
     assert lines[2].startswith("t=+1.000s")
-    assert "0x3F" not in text and "0x05" not in text
+    assert "0x3F" not in text
+    assert "0x05" not in text
 
 
 def test_redaction_masks_every_raw_payload_and_keeps_decoded_values() -> None:
@@ -128,7 +129,8 @@ def test_redaction_masks_every_raw_payload_and_keeps_decoded_values() -> None:
     lines = Redactor().redact(frames, RedactionOptions()).splitlines()
     assert "data=<8 bytes masked> decoded=[Module Vout=" in lines[0]
     assert "00 01 02" not in lines[0]
-    assert "<8 bytes masked>" in lines[1] and "SERIAL" not in lines[1]
+    assert "<8 bytes masked>" in lines[1]
+    assert "SERIAL" not in lines[1]
     assert lines[2].endswith("id=<undecoded> data=<2 bytes masked>")
     assert "0x123" not in lines[2]
 
@@ -150,7 +152,8 @@ def test_partially_parsed_payload_never_leaks_its_unparsed_bytes() -> None:
         [captured(infypower_id(0x02, 0x01, 0x02), b"\xaa\xbb\x03\xcc\xdd\xee\xff\x11", 0.0)],
         RedactionOptions(),
     )
-    assert "<8 bytes masked>" in line and "AA" not in line
+    assert "<8 bytes masked>" in line
+    assert "AA" not in line
 
 
 def test_unmasked_decoded_frame_shows_raw_bytes_and_values() -> None:
@@ -168,7 +171,8 @@ def test_unmasked_undecoded_payload_has_no_decoded_values() -> None:
 def test_malformed_payload_of_a_decoded_command_stays_masked() -> None:
     frames = [captured(infypower_id(0x03, 0x01, 0x02), b"\xde\xad\xbe", 0.0)]
     line = Redactor().redact(frames, RedactionOptions())
-    assert "<3 bytes masked>" in line and "DE AD" not in line
+    assert "<3 bytes masked>" in line
+    assert "DE AD" not in line
 
 
 def test_redaction_can_be_disabled() -> None:
@@ -230,8 +234,10 @@ def test_ask_sends_the_request_system_prompt() -> None:
 
 
 def test_prepare_rejects_blank_question() -> None:
+    service = DiagnosisService({}, FakeKeys())
+    options = RedactionOptions()
     with pytest.raises(ValueError, match="question"):
-        DiagnosisService({}, FakeKeys()).prepare("   ", [], RedactionOptions())
+        service.prepare("   ", [], options)
 
 
 def test_ask_passes_key_model_and_system_prompt() -> None:
@@ -254,14 +260,17 @@ def test_blank_model_falls_back_to_default_and_local_needs_no_key() -> None:
 def test_missing_key_is_reported_without_calling_provider() -> None:
     provider = FakeProvider()
     service = DiagnosisService({"openai": provider}, FakeKeys())
+    openai = provider_by_id("openai")
     with pytest.raises(ProviderError, match="No API key"):
-        service.test_connection(provider_by_id("openai"), "gpt")
+        service.test_connection(openai, "gpt")
     assert provider.calls == []
 
 
 def test_missing_adapter_is_reported() -> None:
+    service = DiagnosisService({}, FakeKeys())
+    local = provider_by_id("local")
     with pytest.raises(ProviderError, match="No adapter"):
-        DiagnosisService({}, FakeKeys()).test_connection(provider_by_id("local"), "")
+        service.test_connection(local, "")
 
 
 def test_redaction_consumes_a_one_shot_iterable_keeping_only_the_tail() -> None:
