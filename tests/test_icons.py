@@ -34,8 +34,9 @@ def test_icon_takes_the_requested_colour(qt_application: QApplication) -> None:
 
 def test_unknown_icon_raises(qt_application: QApplication) -> None:
     del qt_application
+    black = QColor("#000000")
     with pytest.raises(FileNotFoundError):
-        load_icon("does-not-exist", QColor("#000000"))
+        load_icon("does-not-exist", black)
 
 
 def test_unrenderable_icon_raises(
@@ -43,5 +44,6 @@ def test_unrenderable_icon_raises(
 ) -> None:
     del qt_application
     monkeypatch.setattr("busscope.icons.QPixmap.loadFromData", lambda *args: False)
+    black = QColor("#000000")
     with pytest.raises(ValueError, match="Cannot render icon"):
-        load_icon("play", QColor("#000000"))
+        load_icon("play", black)
