@@ -1,6 +1,6 @@
 # Sequence diagram — manual transmission — startup kill switch
 
-> **Feature**: issue #95 — compile-time/runtime kill switch for the transmission tab
+> **Feature**: issue #95 — runtime (environment variable) kill switch for the transmission tab
 > **Decision**: [ADR-0009](../../../decisions/ADR-0009-transmission-kill-switch.md)
 
 ## Context
