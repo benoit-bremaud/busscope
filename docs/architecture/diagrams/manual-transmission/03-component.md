@@ -48,6 +48,8 @@ flowchart LR
     Adapter --> PythonCan
     PythonCan --> SocketCAN
     Window -->|"hosts tab only"| Panel
+    Switch[transmission_enabled]
+    Bootstrap --> Switch
     Bootstrap --> Window
     Bootstrap --> Panel
     Bootstrap --> Adapter
@@ -56,6 +58,8 @@ flowchart LR
 
 ## Notes
 
+- The composition root builds the panel, adapter and inspector only when `transmission_enabled`
+  returns true (ADR-0009); otherwise the window hosts no Transmission tab.
 - Core dependencies do not point to PySide6, python-can, Linux commands, or the USB adapter.
 - The read-only readiness port is a required safety and test seam, not a general interface manager.
 - The composition root is the only component that selects `SocketCanTransmitter` for the port.

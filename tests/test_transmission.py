@@ -1,8 +1,13 @@
+import logging
 from dataclasses import FrozenInstanceError
 
 import pytest
 
-from busscope.transmission import ManualTransmission
+from busscope.transmission import (
+    TRANSMISSION_SWITCH,
+    ManualTransmission,
+    transmission_enabled,
+)
 
 
 @pytest.mark.parametrize(
@@ -58,3 +63,29 @@ def test_manual_transmission_enforces_invariants_and_is_immutable() -> None:
         ManualTransmission("can0", 0x123, bytes(7))
     with pytest.raises(ValueError, match="8 bytes"):
         ManualTransmission("can0", 0x123, bytearray(8))  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize(
+    ("environment", "expected"),
+    [
+        ({}, False),
+        ({"BUSSCOPE_ENABLE_TRANSMISSION": ""}, False),
+        ({"BUSSCOPE_ENABLE_TRANSMISSION": "0"}, False),
+        ({"BUSSCOPE_ENABLE_TRANSMISSION": "1"}, True),
+    ],
+)
+def test_transmission_switch_is_off_unless_exactly_one(
+    environment: dict[str, str], expected: bool
+) -> None:
+    assert transmission_enabled(environment) is expected
+
+
+@pytest.mark.parametrize("value", ["true", "yes", " 1", "1 ", "01", "2", "on"])
+def test_transmission_switch_ignores_malformed_values_with_a_warning(
+    value: str, caplog: pytest.LogCaptureFixture
+) -> None:
+    with caplog.at_level(logging.WARNING, logger="busscope.transmission"):
+        enabled = transmission_enabled({TRANSMISSION_SWITCH: value})
+
+    assert enabled is False
+    assert TRANSMISSION_SWITCH in caplog.text

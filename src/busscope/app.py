@@ -1,5 +1,6 @@
 """Application composition root for the BusScope desktop application."""
 
+import os
 import sys
 
 from PySide6.QtCore import QCoreApplication, QSettings
@@ -17,6 +18,7 @@ from busscope.socketcan_transmission import (
     IpLinkCanInterfaceInspector,
     SocketCanTransmitter,
 )
+from busscope.transmission import transmission_enabled
 from busscope.transmission_ui import TransmissionWidget
 from busscope.ui import CaptureWindow
 
@@ -32,13 +34,18 @@ def create_application(arguments: list[str] | None = None) -> QApplication:
 
 
 def create_capture_window() -> CaptureWindow:
-    """Build the production capture dependency graph."""
+    """Build the production capture dependency graph.
+
+    The transmitter and its tab exist only when the kill switch is on (ADR-0009).
+    """
     session = CaptureSession(PythonCanAdapter(), ProtocolDecoder())
     repository = QtSettingsRepository(QSettings())
     preferences = repository.load()
     settings_widget = SettingsWidget(preferences, repository)
-    transmitter = SocketCanTransmitter(IpLinkCanInterfaceInspector())
-    transmission_widget = TransmissionWidget(transmitter)
+    transmission_widget = None
+    if transmission_enabled(os.environ):
+        transmitter = SocketCanTransmitter(IpLinkCanInterfaceInspector())
+        transmission_widget = TransmissionWidget(transmitter)
     window = CaptureWindow(session, preferences, settings_widget, transmission_widget)
     assistant = AssistantWidget(
         KeyringKeyStore(),

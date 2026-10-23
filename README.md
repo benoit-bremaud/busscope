@@ -22,7 +22,10 @@ numeric precision, raw payloads, decoded values, diagnostics, and temporal stati
 are stored locally and restored on the next launch; they never affect captured data or CAN bus
 operation.
 
-Manual transmission is disabled at every startup. Each request must contain one 29-bit extended
+Manual transmission is off by default: the **Transmission** tab and its transmitter exist only
+when the application is started with `BUSSCOPE_ENABLE_TRANSMISSION=1`
+([ADR-0009](docs/decisions/ADR-0009-transmission-kill-switch.md)). Even then it is disabled at
+every startup until enabled in the tab. Each request must contain one 29-bit extended
 identifier and exactly eight bytes, then requires explicit confirmation. Physical interfaces must
 be configured externally with controller-level `ONE-SHOT` enabled; the application verifies this
 state immediately before sending and otherwise fails closed. See
