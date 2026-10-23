@@ -72,5 +72,5 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - GitHub Actions checks code quality, secrets, static analysis, dependency changes, and repository
   security posture.
 
-[0.1.1]: https://github.com/benoit-bremaud/can-sniffer/compare/v0.1.0...v0.1.1
-[0.1.0]: https://github.com/benoit-bremaud/can-sniffer/releases/tag/v0.1.0
+[0.1.1]: https://github.com/benoit-bremaud/busscope/compare/v0.1.0...v0.1.1
+[0.1.0]: https://github.com/benoit-bremaud/busscope/releases/tag/v0.1.0
