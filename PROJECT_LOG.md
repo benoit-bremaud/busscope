@@ -164,4 +164,18 @@ ordinary commits from that PR's branch.
   hidden; context-window truncation is flagged and every Gemini text part is read;
   progressive-disclosure UI. Final gate on `7821429`: 416 tests, coverage 98.9 %, interrogate
   96.1 %, SonarQube PASSED. Note: the non-Anthropic wire formats come from public docs (Context7
-  quota was exhausted). Next: #99, #95.
+  quota was exhausted).
+- **PR #101 merged** (`5bfa78a`) — `test(quality): fix the findings of the upgraded SonarQube
+  Python profile` (`test/100-sonar-python-profile`, closes #100, merged 2026-10-23). The local
+  SonarQube server came back as 26.10 with 69 new Python rules, which flagged 31 spots in existing
+  tests and failed the gate during #99. Owner decision (MCDA 440/500): a dedicated brick merged
+  before #99. Test-only fix: inputs built before each `pytest.raises` block (S5778 ×19) and
+  composite asserts split (S9073 ×12). Gate on `76f7b30`: 416 tests, coverage 98.9 %, interrogate
+  96.1 %, SonarQube PASSED with 0 new issues, QA smoke screenshots in
+  `docs/architecture/qa/100-sonar-python-profile/`; Codex found no issue. The SonarQube project
+  key was renamed `can_sniffer` → `busscope` on the server (`api/projects/update_key`, history
+  kept) as part of #99.
+- **Backlog triage 2026-10-23** (owner decisions): #96 moves right after #95 (MCDA 410/500,
+  fallback: after #89 with #97); #74 split into one decoder issue each (#102 J1939, #103 CANopen,
+  #104 CHAdeMO, #105 Modbus RTU/TCP); the icon cache and recolour items of #71 move to #87; #80
+  updated (the AI assistant has shipped; the study still blocks RFID). Next: #99, #95, #96.
