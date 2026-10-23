@@ -64,7 +64,7 @@ classDiagram
     SocketCanTransmitter --> ManualTransmission
     TransmissionWidget --> ManualTransmission
     TransmissionWidget --> CanTransmissionPort
-    CaptureWindow o-- TransmissionWidget
+    CaptureWindow o-- "0..1" TransmissionWidget : only when the kill switch is on (ADR-0009)
 ```
 
 ## Notes

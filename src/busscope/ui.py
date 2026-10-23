@@ -91,12 +91,13 @@ class CaptureWindow(QMainWindow):
         controller: CaptureController,
         preferences: DisplayPreferences,
         settings_widget: SettingsWidget,
-        transmission_widget: TransmissionWidget,
+        transmission_widget: TransmissionWidget | None,
         initial_protocol_key: str | None = None,
     ) -> None:
         """Wire the controller, preferences and child widgets into the main window.
 
         Without ``initial_protocol_key`` the capture tab starts on the protocol picker alone.
+        Without ``transmission_widget`` the window has no Transmission tab (ADR-0009).
         """
         super().__init__()
         self._controller = controller
@@ -174,7 +175,11 @@ class CaptureWindow(QMainWindow):
             " padding: 1px 8px; }"
         )
         self.listen_only_label = QLabel("Listen-only")
-        self.listen_only_label.setToolTip("Frame transmission is disabled in the capture tab")
+        self.listen_only_label.setToolTip(
+            "Frame transmission is disabled"
+            if transmission_widget is None
+            else "The capture tab is listen-only; manual transmission is enabled in its own tab"
+        )
         lock_icon = load_icon("lock", self.palette().color(QPalette.ColorRole.WindowText))
         self.listen_only_icon = QLabel()
         self.listen_only_icon.setPixmap(lock_icon.pixmap(16, 16))
@@ -258,7 +263,8 @@ class CaptureWindow(QMainWindow):
         layout.addWidget(self.frame_list)
         self.tabs = QTabWidget()
         self.tabs.addTab(capture_widget, "Capture")
-        self.tabs.addTab(self.transmission_widget, "Transmission")
+        if self.transmission_widget is not None:
+            self.tabs.addTab(self.transmission_widget, "Transmission")
         self.tabs.addTab(self.settings_widget, "Settings")
         self.setCentralWidget(self.tabs)
         self.setWindowTitle("BusScope")

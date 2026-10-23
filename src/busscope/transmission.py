@@ -1,6 +1,8 @@
 """Framework-independent contracts for safe manual CAN transmission."""
 
+import logging
 import re
+from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Protocol, Self
 
@@ -73,3 +75,21 @@ class CanInterfaceReadinessPort(Protocol):
 
     def ensure_ready(self, channel: str) -> None:
         """Raise when the interface cannot guarantee one physical attempt."""
+
+
+TRANSMISSION_SWITCH = "BUSSCOPE_ENABLE_TRANSMISSION"
+_logger = logging.getLogger(__name__)
+
+
+def transmission_enabled(environment: Mapping[str, str]) -> bool:
+    """Return whether the default-off transmission kill switch is turned on (ADR-0009).
+
+    Only the exact value ``1`` enables transmission; an absent, empty or ``0`` value keeps it
+    off, and any other value is treated as off with a warning so a typo never enables sending.
+    """
+    value = environment.get(TRANSMISSION_SWITCH)
+    if value == "1":
+        return True
+    if value not in (None, "", "0"):
+        _logger.warning("Ignoring %s=%r: only '1' enables transmission", TRANSMISSION_SWITCH, value)
+    return False

@@ -606,13 +606,14 @@ def test_application_composition_builds_capture_window(
 ) -> None:
     settings = QSettings(str(tmp_path / "settings.ini"), QSettings.Format.IniFormat)
     monkeypatch.setattr("busscope.app.QSettings", lambda: settings)
+    monkeypatch.delenv("BUSSCOPE_ENABLE_TRANSMISSION", raising=False)
     application = create_application([])
     window = create_capture_window()
 
     assert application is qt_application
     assert isinstance(window, CaptureWindow)
-    assert window.tabs.tabText(3) == "AI assistant"
-    window.tabs.setCurrentIndex(3)  # opening the tab re-checks readiness
+    assert window.tabs.tabText(2) == "AI assistant"
+    window.tabs.setCurrentIndex(2)  # opening the tab re-checks readiness
     window.tabs.setCurrentIndex(0)
     assert window.captured_frames() == ()
     assert QCoreApplication.organizationName() == "benoit-bremaud"
@@ -1226,3 +1227,30 @@ def test_captured_frames_excludes_records_of_the_previous_source(
     window._append_record(CapturedFrame(0.5, ProtocolDecoder().decode(CanFrame(0x123, b""))))
     assert len(window.captured_frames()) == 1
     assert changes == [0, 1]  # mode switch, then the first live frame
+
+
+def test_window_without_transmission_widget_has_no_transmission_tab(
+    qt_application: QApplication,
+) -> None:
+    del qt_application
+    selected = DisplayPreferences.defaults()
+    window = CaptureWindow(
+        FakeController([]),
+        selected,
+        SettingsWidget(selected, MemoryPreferencesRepository(selected)),
+        None,
+    )
+
+    titles = [window.tabs.tabText(index) for index in range(window.tabs.count())]
+    assert titles == ["Capture", "Settings"]
+    assert window.transmission_widget is None
+    assert window.listen_only_label.toolTip() == "Frame transmission is disabled"
+
+
+def test_window_with_transmission_widget_keeps_its_tab(qt_application: QApplication) -> None:
+    del qt_application
+    window = create_test_window(FakeController([]))
+
+    titles = [window.tabs.tabText(index) for index in range(window.tabs.count())]
+    assert titles == ["Capture", "Transmission", "Settings"]
+    assert "manual transmission is enabled" in window.listen_only_label.toolTip()
