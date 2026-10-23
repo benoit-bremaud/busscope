@@ -178,3 +178,8 @@ ordinary commits from that PR's branch.
   fallback: after #89 with #97); #74 split into one decoder issue each (#102 J1939, #103 CANopen,
   #104 CHAdeMO, #105 Modbus RTU/TCP); the icon cache and recolour items of #71 move to #87; #80
   updated (the AI assistant has shipped; the study still blocks RFID). Next: #99, #95, #96.
+- **PR #106 merged** (`947a1c3`) — `chore(repo): finish the can_sniffer to busscope rename`
+  (`chore/99-busscope-rename`, closes #99, merged 2026-10-23). SonarQube key renamed on the
+  server with history kept; CHANGELOG links, log header and review-local title updated; GitHub
+  Project #64 renamed. Gate: 416 tests, coverage 98.9 %, interrogate 96.1 %, SonarQube PASSED;
+  Codex found no issue.
