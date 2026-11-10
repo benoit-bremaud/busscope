@@ -24,7 +24,9 @@ busscope = "busscope.app:main"
 dev = [
     "interrogate>=1.7,<2",
     "mypy>=1.14,<2",
-    "pytest>=8.3,<9",
+    # Known vulnerabilities in the installed environment (`just security`, ADR-0010).
+    "pip-audit>=2.9,<3",
+    "pytest>=9.0.3,<10",
     "pytest-cov>=6,<7",
     "ruff>=0.9,<1",
 ]

@@ -25,7 +25,8 @@ Python modules are not a stable library API.
 1. Select the version according to Semantic Versioning and keep the version in `pyproject.toml`
    without a `v` prefix.
 2. Prepare the version and matching `CHANGELOG.md` section in a reviewed pull request.
-3. Merge the preparation pull request into `main` and wait for all checks to pass.
+3. Merge the preparation pull request into `main` with `just merge <pr>`, then run `just gate`
+   on the new `main` commit so it carries its own attestation.
 4. Create an annotated, signed `vMAJOR.MINOR.PATCH` tag from that exact `main` commit.
 5. Push only the release tag and publish a GitHub release using the matching changelog section.
 
@@ -34,29 +35,38 @@ defined in [`.github/tag-protection.md`](.github/tag-protection.md).
 
 ## Validation
 
-Use the isolated test environment and run:
+Every check runs locally ([ADR-0010](docs/decisions/ADR-0010-local-first-ci.md), skill
+`local-ci`); there is no GitHub workflow. Once per clone, install the pinned toolchain of
+`mise.toml`, the isolated `.venv-test` environment and the git hooks:
 
 ```bash
-.venv-test/bin/pytest
-.venv-test/bin/ruff check .
-.venv-test/bin/mypy
+mise x -- just setup
 ```
 
-Before a pull request, also run the local SonarQube analysis. It needs the shared server at
-`http://localhost:9000`, the global analysis token exported as `SONAR_TOKEN`, and the
+The tiers, each one a `just` recipe (`just --list` describes them):
+
+| Tier | Recipe | When | Holds |
+|------|--------|------|-------|
+| L0 | `just fast` | pre-commit hook | staged secrets (gitleaks), Ruff on the staged files, the commit subject |
+| L1 | `just check` | pre-push hook, before a pull request | Ruff lint and format, strict mypy, Interrogate ≥ 90 %, pytest with coverage ≥ 90 %, the wiring and attestation tests, Semgrep CE, pip-audit, gitleaks on the history |
+| L2 | `just gate` | on the pushed head, before every merge | `check`, then SonarQube with the quality-gate wait, then the signed `gate` attestation |
+| L3 | `just nightly` | systemd user timer | `check`, TruffleHog, toolchain drift |
+
+Run the recipes as `mise x -- just <recipe>` from a shell that does not activate mise.
+
+`just gate` needs the shared SonarQube server at `http://localhost:9000`, the global analysis
+token in `SONAR_TOKEN` (or in `~/.config/sonar-tokens/busscope`), and the
 [SonarScanner CLI](https://docs.sonarsource.com/sonarqube-server/latest/analyzing-source-code/scanners/sonarscanner/)
-on `PATH`, which is not part of `.venv-test`. The project settings live in
-`sonar-project.properties`. Run both commands from the repository root, in this order, so the
-scan reads a fresh coverage report:
+on `PATH`, which is not part of `.venv-test` nor of `mise.toml`. The project settings live in
+`sonar-project.properties`; the recipe refreshes `coverage.xml` itself before the scan. Never pass
+the token on the command line (`-Dsonar.token=...` lands in the shell history and the process
+list), and do not share the output of a debug run (`-X`).
 
-```bash
-.venv-test/bin/pytest --cov-report=xml:coverage.xml
-sonar-scanner -Dsonar.qualitygate.wait=true
-```
-
-The scan must end with `QUALITY GATE STATUS: PASSED`. Never pass the token on the command line
-(`-Dsonar.token=...` lands in the shell history and the process list), and do not share the
-output of a debug run (`-X`).
+A pull request is merged only with `just merge <pr>`, which verifies the `gate` attestation on
+the exact head SHA (a signed note on `refs/notes/gate`, checked against
+`.github/allowed_signers` of `main`, plus the `gate` commit status required by the branch
+protection). Signing is SSH: `git config gpg.format ssh` and `user.signingkey` set to a public key
+listed in `.github/allowed_signers`.
 
 New features must maintain at least 90% total coverage and include happy-path, sad-path, and
 edge-case tests. Never commit credentials, `.env` files, real captures, or charger-identifying
@@ -69,6 +79,6 @@ checklist:
 
 - [ ] The design documentation is current and approved when required.
 - [ ] Happy paths, sad paths, and edge cases are covered when behavior changes.
-- [ ] Tests pass with at least 90% total coverage.
-- [ ] Ruff and strict mypy checks pass.
+- [ ] `just check` passes (tests with at least 90% total coverage, Ruff, strict mypy, Interrogate,
+      Semgrep, pip-audit, gitleaks).
 - [ ] No credentials, captures, or charger-identifying data are included.

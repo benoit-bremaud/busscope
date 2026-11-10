@@ -1,0 +1,29 @@
+# Git hooks for the local CI (#108, skill local-ci, ADR-0010): tier L0 on commit, L1 on push.
+# Install once per clone: `just setup`. `mise x --` puts the pinned tools of mise.toml on PATH
+# whether or not the shell activates mise; ruff runs from the project's own `.venv-test`.
+pre-commit:
+  parallel: true
+  jobs:
+    - name: staged secrets
+      run: mise x -- gitleaks git --staged --redact --no-banner .
+    - name: ruff check
+      glob: "*.py"
+      run: .venv-test/bin/ruff check {staged_files}
+    - name: ruff format
+      glob: "*.py"
+      run: .venv-test/bin/ruff format --check {staged_files}
+
+commit-msg:
+  jobs:
+    - name: conventional commit subject
+      run: sh scripts/check-commit-msg.sh {1}
+
+pre-push:
+  jobs:
+    - name: just check (L1)
+      # The check runs on the working tree, so it must equal the pushed commits (untracked files
+      # included: an untracked module passes mypy locally and breaks the pushed commit).
+      run: >-
+        [ -z "$(git status --porcelain)" ]
+        || { echo "pre-push: commit or set aside the uncommitted or untracked changes first" >&2; exit 1; };
+        mise x -- just check

@@ -1,0 +1,22 @@
+# Local CI toolchain (#108, skill local-ci, ADR-0010): every CLI the justfile tiers and the lefthook
+# hooks call, pinned; `mise.lock` pins the checksums. `just setup` installs it, creates `.venv-test`
+# under the pinned Python and installs the project with its `dev` extra (ruff, mypy, pytest,
+# interrogate, pip-audit come from pyproject.toml, not from here). System tools stay outside mise:
+# sonar-scanner (not in the mise registry, skill infra-accounts) and the Qt runtime (libegl1).
+#
+# Not here, on purpose (rule 1 of the skill): osv-scanner (no lockfile; pip-audit audits the
+# installed environment), Trivy and hadolint (no container), actionlint and zizmor (no workflow is
+# left), typos (CAN payloads and the firmware trip it).
+[tools]
+python = "3.12.16"
+just = "1.59.0"
+lefthook = "2.2.2"
+gitleaks = "8.30.1"
+trufflehog = "3.99.8"
+jq = "1.8.2" # scripts/test-attest.sh applies the `gh api -q` filter through it
+# Semgrep Community Edition (SAST, replaces CodeQL). pipx backend: the version is pinned, its Python
+# dependencies are resolved at install time (accepted gap, ADR-0010).
+"pipx:semgrep" = "1.184.0"
+
+[settings]
+lockfile = true
