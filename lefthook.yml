@@ -21,9 +21,14 @@ commit-msg:
 pre-push:
   jobs:
     - name: just check (L1)
+      # Lefthook skips a pre-push job whose push lists no file (a branch pushed for the first time,
+      # with no upstream yet; a tag; a deletion). A constant `files` list, referenced by `{files}`
+      # in the command, keeps the tier on every push.
+      files: echo justfile
       # The check runs on the working tree, so it must equal the pushed commits (untracked files
       # included: an untracked module passes mypy locally and breaks the pushed commit).
       run: >-
+        : {files};
         [ -z "$(git status --porcelain)" ]
         || { echo "pre-push: commit or set aside the uncommitted or untracked changes first" >&2; exit 1; };
         mise x -- just check

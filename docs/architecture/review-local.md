@@ -16,7 +16,7 @@
 | Step | Result |
 |---|---|
 | 0 CI mirror | n/a: no workflow is left (`.github/workflows/` deleted, ADR-0010) |
-| 1 Tests | ✅ 433 pytest · ✅ test-local-ci 124 cases · ✅ test-attest 31 cases |
+| 1 Tests | ✅ 433 pytest · ✅ test-local-ci 125 cases · ✅ test-attest 31 cases |
 | 2 Coverage | tests 98.95 % lines (floor 90) · docs 96.1 % (Interrogate, floor 90) |
 | 3 SonarQube | ⏸ deferred to the pre-merge run (`just gate` on the pushed head) |
 | 4 Secrets | ✅ gitleaks clean (whole history) · no tracked .env · diff read: nothing sensitive (`allowed_signers` holds a public key only) |

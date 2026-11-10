@@ -58,6 +58,7 @@ grep -qE '^python = "3\.[0-9]+\.[0-9]+"' mise.toml || fail "mise.toml does not p
 grep -qE '^ +run: sh scripts/check-commit-msg.sh \{1\}' lefthook.yml || fail "commit-msg hook does not run check-commit-msg.sh on the message file"; ok
 grep -qE '^ +mise x -- just check$' lefthook.yml || fail "pre-push hook does not run just check"; ok
 grep -qF 'git status --porcelain' lefthook.yml || fail "pre-push hook does not refuse a dirty tree"; ok
+grep -qE '^ +files: echo ' lefthook.yml || fail "pre-push hook is skipped on a first push (no push files) without a constant files list"; ok
 lefthook validate > /dev/null || fail "lefthook validate"; ok
 
 # commit-msg subjects.
