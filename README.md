@@ -44,8 +44,8 @@ pip install -e '.[dev]'
 ```
 
 Every check runs locally, never on GitHub ([ADR-0010](docs/decisions/ADR-0010-local-first-ci.md)).
-Install the pinned toolchain, the isolated test environment and the git hooks once per clone,
-then run the pre-push tier:
+With [mise](https://mise.jdx.dev) and `uv` installed, install the pinned toolchain, the isolated
+test environment and the git hooks once per clone, then run the pre-push tier:
 
 ```bash
 mise x -- just setup
@@ -53,8 +53,8 @@ mise x -- just check
 ```
 
 `just check` runs Ruff, strict mypy, Interrogate, pytest with the coverage floor, Semgrep,
-pip-audit and gitleaks; the git hooks run the staged-file subset on commit and the whole tier
-on push. See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the pre-merge gate.
+pip-audit and gitleaks; the git hooks run the staged-file subset on commit, check the commit
+subject, and run the whole tier on push from a clean tree. See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the pre-merge gate.
 
 Start the graphical application from the work environment:
 

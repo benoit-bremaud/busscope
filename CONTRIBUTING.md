@@ -7,7 +7,9 @@
 3. Add or update proportional UML documentation before implementing behavior or architecture.
 4. Obtain design approval before implementation.
 5. Keep changes focused and follow Clean Architecture, SOLID, KISS, DRY, and YAGNI.
-6. Use Angular Conventional Commits: `type(scope): description`.
+6. Use Conventional Commits, `type(scope): description`, with a type among `feat fix docs chore
+   refactor test ci build perf` and a subject of 100 characters at most; the commit-msg hook
+   refuses anything else.
 7. Open a pull request linked to the Issue and address all review comments before merging.
 8. Merge only after explicit maintainer approval, then remove the merged branch.
 
@@ -26,7 +28,8 @@ Python modules are not a stable library API.
    without a `v` prefix.
 2. Prepare the version and matching `CHANGELOG.md` section in a reviewed pull request.
 3. Merge the preparation pull request into `main` with `just merge <pr>`, then run `just gate`
-   on the new `main` commit so it carries its own attestation.
+   on the new `main` commit so it carries its own attestation (the squash commit is new and
+   unattested until then).
 4. Create an annotated, signed `vMAJOR.MINOR.PATCH` tag from that exact `main` commit.
 5. Push only the release tag and publish a GitHub release using the matching changelog section.
 
@@ -37,7 +40,9 @@ defined in [`.github/tag-protection.md`](.github/tag-protection.md).
 
 Every check runs locally ([ADR-0010](docs/decisions/ADR-0010-local-first-ci.md), skill
 `local-ci`); there is no GitHub workflow. Once per clone, install the pinned toolchain of
-`mise.toml`, the isolated `.venv-test` environment and the git hooks:
+`mise.toml`, the isolated `.venv-test` environment and the git hooks. Prerequisites outside
+mise: [mise](https://mise.jdx.dev) itself, `uv` (mise installs Semgrep through it), `git`, `gh`,
+`curl`, the Qt runtime (`libegl1` on Debian/Ubuntu) and, for `just gate`, `sonar-scanner`:
 
 ```bash
 mise x -- just setup
@@ -47,12 +52,13 @@ The tiers, each one a `just` recipe (`just --list` describes them):
 
 | Tier | Recipe | When | Holds |
 |------|--------|------|-------|
-| L0 | `just fast` | pre-commit hook | staged secrets (gitleaks), Ruff on the staged files, the commit subject |
+| L0 | `just fast` | pre-commit hook | staged secrets (gitleaks), Ruff on the staged files; the commit-msg hook checks the subject |
 | L1 | `just check` | pre-push hook, before a pull request | Ruff lint and format, strict mypy, Interrogate ≥ 90 %, pytest with coverage ≥ 90 %, the wiring and attestation tests, Semgrep CE, pip-audit, gitleaks on the history |
 | L2 | `just gate` | on the pushed head, before every merge | `check`, then SonarQube with the quality-gate wait, then the signed `gate` attestation |
 | L3 | `just nightly` | systemd user timer | `check`, TruffleHog, toolchain drift |
 
-Run the recipes as `mise x -- just <recipe>` from a shell that does not activate mise.
+Run the recipes as `mise x -- just <recipe>` from a shell that does not activate mise. The
+pre-push hook refuses a dirty working tree before running `check`.
 
 `just gate` needs the shared SonarQube server at `http://localhost:9000`, the global analysis
 token in `SONAR_TOKEN` (or in `~/.config/sonar-tokens/busscope`), and the

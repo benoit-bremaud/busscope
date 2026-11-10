@@ -13,7 +13,8 @@ PySide6 CAN monitor stays the shipped application until the new UI replaces it.
 
 - Work from an Issue and a dedicated branch.
 - Add or update UML design documentation before implementing a feature.
-- Use Angular Conventional Commits: `type(scope): description`.
+- Use Conventional Commits, `type(scope): description`, type among `feat fix docs chore refactor
+  test ci build perf`, subject of 100 characters at most (enforced by the commit-msg hook).
 - Run tests, linting, and type checks before opening a pull request.
 - Every feature must maintain at least 90% test coverage with happy-path, sad-path, and edge-case tests.
 - Do not merge pull requests without explicit user approval.

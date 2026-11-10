@@ -2,7 +2,8 @@
 # needed. GitHub Actions runs nothing: there is no production deploy, a release is a signed tag
 # (CONTRIBUTING.md). Tools come from mise.toml (`just setup`); run through `mise x -- just <tier>`
 # when the shell does not activate mise (the git hooks do). The Python checks run from `.venv-test`,
-# the isolated environment the removed quality workflow used, with the configuration of pyproject.toml.
+# the isolated environment, with the configuration of pyproject.toml. The last comment line of a
+# recipe is what `just --list` prints; the lines above it hold the reasons.
 #
 #   L0 fast     pre-commit hook                        staged files only                       < 10 s
 #   L1 check    pre-push hook, review-local --push     lint + test + security + secrets        < 3 min
@@ -14,7 +15,7 @@
 
 set shell := ["sh", "-eu", "-c"]
 
-# The Qt widgets under test need no display (same as the removed workflow)
+# The Qt widgets under test need no display
 export QT_QPA_PLATFORM := "offscreen"
 
 venv := ".venv-test/bin"
@@ -37,8 +38,12 @@ fast:
 # Fail fast when `.venv-test` is missing or on another Python than mise.toml pins
 [private]
 venv-guard:
-    @[ -x {{venv}}/python ] || { echo "no .venv-test: run just setup" >&2; exit 1; }
-    @want=$(sed -n 's/^python = "\([0-9.]*\)".*/\1/p' mise.toml); got=$({{venv}}/python -c 'import platform; print(platform.python_version())'); [ "$got" = "$want" ] || { echo "Python $got in .venv-test, $want pinned in mise.toml: remove .venv-test and run just setup" >&2; exit 1; }
+    #!/bin/sh
+    set -eu
+    [ -x {{venv}}/python ] || { echo "no .venv-test: run just setup" >&2; exit 1; }
+    want=$(sed -n 's/^python = "\([0-9.]*\)".*/\1/p' mise.toml)
+    got=$({{venv}}/python -c 'import platform; print(platform.python_version())')
+    [ "$got" = "$want" ] || { echo "Python $got in .venv-test, $want pinned in mise.toml: remove .venv-test and run just setup" >&2; exit 1; }
 
 # Ruff (lint + format), strict mypy, docstring coverage >= 90 % (pyproject.toml), the hooks config
 lint: venv-guard
@@ -54,16 +59,16 @@ test: venv-guard
     sh scripts/test-local-ci.sh
     sh scripts/test-attest.sh
 
-# SAST (Semgrep Community Edition, the python registry ruleset, replaces CodeQL) on the application
-# and its tests, then known vulnerabilities in the installed dependencies, dev ones included
-# (pip-audit, replaces Dependency review). EIO_BACKEND=posix: semgrep-core otherwise opens io_uring
-# rings charged to RLIMIT_MEMLOCK with every Electron process, and dies intermittently.
+# The python registry ruleset is fetched on each run (network, rules that move without a commit:
+# accepted, ADR-0010). EIO_BACKEND=posix: semgrep-core otherwise opens io_uring rings charged to
+# RLIMIT_MEMLOCK with every Electron process, and dies intermittently. pip-audit audits what is
+# installed in .venv-test, dev tools included; the editable project itself is not on PyPI.
 # SAST (Semgrep CE on src and tests) + pip-audit on .venv-test (replaces CodeQL and Dependency review)
 security: venv-guard
     EIO_BACKEND=posix semgrep scan --config p/python --error --metrics=off --quiet -j 4 src tests
     {{venv}}/pip-audit --progress-spinner off --skip-editable
 
-# Secrets in the whole git history (replaces the gitleaks workflow)
+# Secrets in the whole git history
 secrets:
     gitleaks git --redact --no-banner .
 
@@ -82,9 +87,9 @@ gate base="origin/main":
     [ -z "$(git status --porcelain)" ] || { echo "gate: commit or set aside local changes first" >&2; exit 1; }
     case "$base" in origin/*) git fetch --quiet origin "${base#origin/}" ;; esac
     git merge-base --is-ancestor "$base" HEAD || { echo "gate: HEAD is behind $base, merge or rebase it first" >&2; exit 1; }
-    # The gate runs the branch's own recipes and scripts with the owner's keys and tokens: a branch
-    # that changes them is gated only after a human read those files (GATE_CI_CHANGE=1).
-    ci=$(git diff --name-only "$base...HEAD" -- justfile lefthook.yml mise.toml mise.lock scripts .github/allowed_signers pyproject.toml sonar-project.properties .gitleaks.toml .gitleaksignore .trufflehog-exclude)
+    # Tripwire, not a sandbox (the code under test runs with the same keys): a branch that edits what
+    # the gate checks or how it attests is gated only after a human read those files (GATE_CI_CHANGE=1).
+    ci=$(git diff --name-only "$base...HEAD" -- justfile lefthook.yml mise.toml mise.lock scripts .github/allowed_signers pyproject.toml sonar-project.properties .gitleaks.toml .gitleaksignore .semgrepignore)
     [ -z "$ci" ] || [ "${GATE_CI_CHANGE:-0}" = 1 ] || { echo "gate: this branch changes the local CI itself ($(printf '%s' "$ci" | tr '\n' ' ')): read those files, then run GATE_CI_CHANGE=1 just gate" >&2; exit 1; }
     [ -n "$(git branch -r --contains HEAD)" ] || { echo "gate: push HEAD first (the attestation is written on the pushed head)" >&2; exit 1; }
     # `check` runs from the body, not as a dependency, so the HEAD it checked is the one attested.
@@ -92,7 +97,8 @@ gate base="origin/main":
     just check
     just sonar
     [ "$(git rev-parse HEAD)" = "$start" ] || { echo "gate: HEAD moved during the gate ($start checked), run it again" >&2; exit 1; }
-    sh scripts/attest.sh write gate "$start"
+    # attest.sh pushes refs/notes/gate: LEFTHOOK=0 keeps the pre-push hook from running check again
+    LEFTHOOK=0 sh scripts/attest.sh write gate "$start"
 
 # SonarQube analysis on the local Community Build (sonar-project.properties, CONTRIBUTING.md) with
 # the global analysis token from SONAR_TOKEN or ~/.config/sonar-tokens/busscope, waiting for the
@@ -106,13 +112,13 @@ sonar: venv-guard
     [ -n "$SONAR_TOKEN" ] || { echo "sonar: no token in SONAR_TOKEN or ~/.config/sonar-tokens/busscope" >&2; exit 1; }
     url="${SONAR_HOST_URL:-http://localhost:9000}"
     curl -sf -m 5 "$url/api/system/status" | grep -q '"status":"UP"' || { echo "sonar: SonarQube is not UP at $url, start it first" >&2; exit 1; }
-    QT_QPA_PLATFORM=offscreen {{venv}}/pytest --quiet --cov-report=xml:coverage.xml
+    {{venv}}/pytest --quiet --cov-report=xml:coverage.xml
     version=$(sed -n 's/^version = "\([^"]*\)".*/\1/p' pyproject.toml)
     SONAR_TOKEN="$SONAR_TOKEN" sonar-scanner -Dsonar.host.url="$url" -Dsonar.projectVersion="$version" -Dsonar.qualitygate.wait=true
 
 # Merge a PR only when its exact head SHA carries the gate attestation (agents-skills ADR-0003).
-# The verifier is read from origin/main. Squash, as every merge of this repository. Same-repository
-# PRs only (the head is fetched from origin).
+# The verifier is read from origin/main. Squash (ADR-0010: one main commit per PR, re-gated after
+# the merge). Same-repository PRs only (the head is fetched from origin).
 # Merge a PR whose exact head SHA carries the gate attestation (the only merge path)
 merge pr:
     #!/bin/sh
@@ -128,13 +134,17 @@ merge pr:
     gh pr merge "$pr" --squash --match-head-commit "$sha"
 
 # L3 — nightly, systemd user timer (no time budget): deep secret history (TruffleHog, offline) and
-# toolchain drift: `mise outdated` exits 0 whatever it finds, so the rows of this mise.toml (not
-# the global config) are read from its JSON and any of them fails the tier.
+# toolchain drift: `mise outdated --bump` (without it an exact pin is never reported) exits 0
+# whatever it finds, so the rows of this mise.toml (not the global config) are read from its JSON
+# and any of them fails the tier, except python: `--bump` names the next minor, and the 3.12 line
+# is deliberate (bumped by hand with requires-python).
 # L3 — nightly (systemd timer): check + TruffleHog + toolchain drift
 nightly: check
     #!/bin/sh
     set -eu
     trufflehog git "file://$PWD" --no-verification --fail --no-update
-    stale=$(mise outdated --json | jq -r --arg here "$PWD/mise.toml" 'to_entries[] | select(.value.source.path == $here) | "\(.key) \(.value.current) -> \(.value.latest)"')
+    json=$(mise outdated --bump --json)
+    printf '%s' "$json" | jq -e 'type == "object" and all(.[]; .source.path != null)' > /dev/null || { echo "nightly: mise outdated --json changed shape, fix the filter" >&2; exit 1; }
+    stale=$(printf '%s' "$json" | jq -r --arg here "$PWD/mise.toml" 'to_entries[] | select(.value.source.path == $here) | select(.key != "python") | "\(.key) \(.value.current) -> \(.value.latest)"')
     [ -z "$stale" ] || { printf 'nightly: bump mise.toml, then mise install && mise lock:\n%s\n' "$stale" >&2; exit 1; }
     echo "nightly: toolchain up to date"

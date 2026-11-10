@@ -196,15 +196,19 @@ ordinary commits from that PR's branch.
   (`ci/108-local-ci-no-workflows`, closes #108; merge SHA recorded by the next brick, as for
   every entry). Owner rule 2026-11-07 (GitHub Actions bill the owner; agents-skills#259):
   the five workflows (quality, gitleaks, codeql, dependency-review, scorecard) are deleted and
-  nothing is left under `.github/workflows/`. ADR-0010 (485/500 over keeping the GitHub-only
+  nothing is left under `.github/workflows/`. ADR-0010 (475/500 over keeping the GitHub-only
   jobs): four `just` tiers (`fast` pre-commit, `check` pre-push, `gate` pre-merge with SonarQube
   and the signed attestation, `nightly`), lefthook hooks, `mise.toml` + `mise.lock` (Python
   3.12.16, just 1.59.0, lefthook 2.2.2, gitleaks 8.30.1, trufflehog 3.99.8, jq 1.8.2, Semgrep CE
   1.184.0), `scripts/{attest,test-attest,check-commit-msg,check-cassettes}.sh` copied verbatim
-  from `~/.claude/scripts`, `scripts/test-local-ci.sh` (74 cases), `.github/allowed_signers`,
+  from `~/.claude/scripts`, `scripts/test-local-ci.sh` (124 cases), `.github/allowed_signers`,
   `just merge <pr>` as the only merge path, branch protection on `main` = the `gate` status
   only. CodeQL → Semgrep CE `p/python`; Dependency review → pip-audit on `.venv-test` (MCDA
   430 over osv-scanner 320: no lockfile), whose first run found pytest 8.4.2 (PYSEC-2026-1845):
   the `dev` range moves to pytest 9. Scorecard dropped. Timings: `just fast` < 1 s, `just lint`
   3.3 s, `just test` 8.5 s (433 tests, coverage 98.95 %, interrogate 96.1 %), `just security`
-  7.6 s, `just secrets` 0.4 s.
+  7.6 s, `just secrets` 0.4 s. Bootstrap merge: `.github/allowed_signers` and `attest.sh` are
+  not on `main` before this PR, so `just merge` cannot verify it; this one merge goes through
+  `gh pr merge --squash` with `MERGE_GATE_WAIVER="bootstrap: allowed_signers not yet on main
+  #108"` after a green `just gate` on the head SHA. Nightly: systemd user units
+  `busscope-nightly.{service,timer}` (04:10) + `busscope-nightly-failed.service`.
