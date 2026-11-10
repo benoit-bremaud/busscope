@@ -1,22 +1,28 @@
 # Local review — busscope (PR #109, local CI)
 
 - Date: 2026-11-10
-- Commit: 1f753fa (fix commit; round 1 on c99865f)
+- Commit: the head after round 3 (round 1 on c99865f, round 2 on 1f753fa, round 3 on 5415555)
 - Scope: branch diff `origin/main...ci/108-local-ci-no-workflows` (`--push` mode)
 - Checks run: adversarial (Opus, 2 rounds) · design · docs · tests · security · correctness
-- Verdict: ship as-is · Must 0 · Should 1 (applied after round 2) · Nice 5
+- Verdict: ship as-is · Must 0 · Should 3 (all applied) · Nice 6
 
 ## Adversarial review (#236)
 - Round 1 on `c99865f`: Must 3 · Should 9 · Nice 5 · unverified 0 · Push gate: closed
-- Round 2 on `1f753fa`: 17 fixed · 1 not fixed (N4, the PR number, verified at PR creation: #109) ·
-  0 regressed · new Must 0 · new Should 1 (sub-choice totals 420/320/325, applied) · **Push gate: open**
+- Round 2 on `1f753fa`: 17 fixed · 1 not fixed (N4, the PR number: the PR is opened after this
+  report, on the next free number) · 0 regressed · new Must 0 · new Should 1 (sub-choice totals
+  420/320/325, applied in `7213e9f`) · Push gate: open
+- Round 3 on `5415555` (lefthook fix, a finding of the author: the first push of the branch went
+  out with the pre-push job skipped, "no matching push files"): 4 fixed · 2 accepted follow-ups ·
+  new Must 0 · new Should 2 (a real-push test, the report refresh: applied in the final commit) ·
+  **Push gate: open**. The real-push cases (first push, empty commit, tag, deletion, dirty tree)
+  fail on the c99865f config at the tag push and pass on the fixed one.
 - Optional second review (owner's OpenAI account): ChatGPT/Codex not run (never a gate step)
 
-## Pre-merge gate (head SHA 1f753fa + the report commit)
+## Pre-merge gate (head: the final commit of the branch)
 | Step | Result |
 |---|---|
 | 0 CI mirror | n/a: no workflow is left (`.github/workflows/` deleted, ADR-0010) |
-| 1 Tests | ✅ 433 pytest · ✅ test-local-ci 125 cases · ✅ test-attest 31 cases |
+| 1 Tests | ✅ 433 pytest · ✅ test-local-ci 132 cases · ✅ test-attest 31 cases |
 | 2 Coverage | tests 98.95 % lines (floor 90) · docs 96.1 % (Interrogate, floor 90) |
 | 3 SonarQube | ⏸ deferred to the pre-merge run (`just gate` on the pushed head) |
 | 4 Secrets | ✅ gitleaks clean (whole history) · no tracked .env · diff read: nothing sensitive (`allowed_signers` holds a public key only) |
@@ -31,7 +37,10 @@ AGENTS.md, CONTRIBUTING.md, ADR-0010. All fixed in `1f753fa`.)
 
 ## 🟡 Should Have
 - `docs/decisions/ADR-0010-local-first-ci.md:36` `[adversarial][docs]` · sub-choice totals were
-  430/320/360 for scores summing to 420/320/325 · fixed in the report commit.
+  430/320/360 for scores summing to 420/320/325 · fixed in `7213e9f`.
+- `lefthook.yml:24` `[correctness]` · lefthook skips a pre-push job when the push lists no file
+  (tag, deletion, empty commit): `files: echo justfile` + `: {files};` keep the tier on every
+  push · fixed in `5415555`, proven by real pushes in `test-local-ci.sh` (round 3 Should).
 - Round 1 Should (all fixed in `1f753fa`): bootstrap merge recorded; main-matrix totals
   475/335/205; squash + re-gate on `main` recorded; `LEFTHOOK=0` on the attestation push; CodeQL
   reason = skill rule 4; Semgrep registry trade-off; `jq` comment; `uv`, `libegl1`,
@@ -57,6 +66,7 @@ AGENTS.md, CONTRIBUTING.md, ADR-0010. All fixed in `1f753fa`.)
 ## Per-dimension summary
 - Adversarial: 3 Must + 9 Should in round 1, all fixed, gate open in round 2 · Design: four
   tiers, one recipe each, no abstraction beyond the skill template · Docs: ADR-0010, CONTRIBUTING,
-  README, AGENTS consistent on types, prerequisites and the merge path · Tests: 124 wiring cases
-  with stubbed boundaries, every refusal asserted on the log · Security: no secret, token never on
-  the command line, offline TruffleHog · Correctness: `just check` green on the fix commit.
+  README, AGENTS consistent on types, prerequisites and the merge path · Tests: 132 wiring cases
+  with stubbed boundaries and real pushes, every refusal asserted on the log · Security: no secret, token never on
+  the command line, offline TruffleHog · Correctness: `just check` green on every commit of the
+  branch since round 1.

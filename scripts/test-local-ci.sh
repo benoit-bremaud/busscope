@@ -59,6 +59,7 @@ grep -qE '^ +run: sh scripts/check-commit-msg.sh \{1\}' lefthook.yml || fail "co
 grep -qE '^ +mise x -- just check$' lefthook.yml || fail "pre-push hook does not run just check"; ok
 grep -qF 'git status --porcelain' lefthook.yml || fail "pre-push hook does not refuse a dirty tree"; ok
 grep -qE '^ +files: echo ' lefthook.yml || fail "pre-push hook is skipped on a first push (no push files) without a constant files list"; ok
+grep -qF ': {files};' lefthook.yml || fail "pre-push hook: the files command is only consulted when {files} appears in run"; ok
 lefthook validate > /dev/null || fail "lefthook validate"; ok
 
 # commit-msg subjects.
@@ -281,5 +282,29 @@ git rm -q --cached notes/leak.txt
 
 printf 'import os\n' > notes/bad.py && git add notes/bad.py
 fast 1 "staged ruff error refused" "F401"
+git rm -q --cached notes/bad.py && rm notes/bad.py notes/leak.txt && git commit -qm 'docs: notes' --no-verify && [ -z "$(git status --porcelain)" ] || fail "L0 repo not clean: $(git status --porcelain)"
+
+# pre-push on real pushes: lefthook skips a job when the push lists no file; the hook must still
+# run the tier on a first push (no upstream), a tag and a deletion. A stub mise logs the call;
+# lefthook itself is the real one, installed in this scratch repository with the real config.
+git init -q --bare "$work/l0-origin" -b main && git remote add origin "$work/l0-origin"
+mkdir "$work/l0-stub" && printf '#!/bin/sh\necho "mise $*" >> "$LOG"\n' > "$work/l0-stub/mise" && chmod +x "$work/l0-stub/mise"
+lefthook install > /dev/null
+export LOG="$work/l0-log"
+push() { # push <label> <git push args>…
+  label=$1; shift; : > "$LOG"
+  env PATH="$work/l0-stub:$PATH" git push "$@" > "$work/out" 2>&1 || { cat "$work/out"; fail "$label: push failed"; }
+  [ "$(grep -c '^mise x -- just check$' "$LOG")" -eq 1 ] || { cat "$work/out" "$LOG"; fail "$label: the pre-push hook did not run just check exactly once"; }
+  ok
+}
+push "first push of a branch" -u origin main
+git checkout -q -b topic && git commit -q --allow-empty -m 'chore: empty' --no-verify
+push "first push of a second branch, empty commit" -u origin topic
+git tag v0.0.0-test && push "tag push" origin v0.0.0-test
+push "branch deletion" origin --delete topic
+echo dirty > notes/dirty.txt
+: > "$LOG"; env PATH="$work/l0-stub:$PATH" git push -q origin main > "$work/out" 2>&1 && fail "pre-push accepted a dirty tree"
+grep -q 'commit or set aside' "$work/out" || { cat "$work/out"; fail "pre-push did not name the dirty tree"; }; ok
+no_line '^mise' "pre-push ran check on a dirty tree"
 
 echo "test-local-ci: $n cases passed"

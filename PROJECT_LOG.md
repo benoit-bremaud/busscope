@@ -201,7 +201,7 @@ ordinary commits from that PR's branch.
   and the signed attestation, `nightly`), lefthook hooks, `mise.toml` + `mise.lock` (Python
   3.12.16, just 1.59.0, lefthook 2.2.2, gitleaks 8.30.1, trufflehog 3.99.8, jq 1.8.2, Semgrep CE
   1.184.0), `scripts/{attest,test-attest,check-commit-msg,check-cassettes}.sh` copied verbatim
-  from `~/.claude/scripts`, `scripts/test-local-ci.sh` (125 cases), `.github/allowed_signers`,
+  from `~/.claude/scripts`, `scripts/test-local-ci.sh` (132 cases), `.github/allowed_signers`,
   `just merge <pr>` as the only merge path, branch protection on `main` = the `gate` status
   only. CodeQL → Semgrep CE `p/python`; Dependency review → pip-audit on `.venv-test` (MCDA
   420 over osv-scanner 320: no lockfile), whose first run found pytest 8.4.2 (PYSEC-2026-1845):

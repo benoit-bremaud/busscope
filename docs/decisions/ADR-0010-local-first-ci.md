@@ -64,10 +64,10 @@ Dependency scan, a sub-choice:
   place and is re-copied; `check-cassettes.sh` has no caller here yet (no `record` recipe: the
   project calls no third-party API) and stays with the set rather than diverging from it.
 - Dropped without replacement: OpenSSF Scorecard (it needs GitHub) and CodeQL itself (skill
-  `local-ci` rule 4: free open-source tools only; Semgrep CE covers SAST). The Semgrep `p/python` ruleset is fetched from the registry on
-  each run: the rules can change without a commit here, and `security` needs the network.
-  Accepted over vendoring the rules (which would freeze known-bad gaps and need its own
-  update chore).
+  `local-ci` rule 4: free open-source tools only; Semgrep CE covers SAST). The Semgrep `p/python`
+  ruleset is fetched from the registry on each run: the rules can change without a commit here, and
+  `security` needs the network. Accepted over vendoring the rules (which would freeze known-bad gaps
+  and need its own update chore).
 - **Fallback: B** if a check proves impossible to run locally for a class of contributors.
 
 ## Consequences
