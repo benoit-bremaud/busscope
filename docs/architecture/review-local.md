@@ -1,9 +1,9 @@
-# Local review — busscope (PR #109, local CI)
+# Local review — busscope (local CI, #108)
 
 - Date: 2026-11-10
 - Commit: the head after round 3 (round 1 on c99865f, round 2 on 1f753fa, round 3 on 5415555)
 - Scope: branch diff `origin/main...ci/108-local-ci-no-workflows` (`--push` mode)
-- Checks run: adversarial (Opus, 2 rounds) · design · docs · tests · security · correctness
+- Checks run: adversarial (Opus, 4 rounds) · design · docs · tests · security · correctness
 - Verdict: ship as-is · Must 0 · Should 3 (all applied) · Nice 6
 
 ## Adversarial review (#236)
@@ -14,8 +14,11 @@
 - Round 3 on `5415555` (lefthook fix, a finding of the author: the first push of the branch went
   out with the pre-push job skipped, "no matching push files"): 4 fixed · 2 accepted follow-ups ·
   new Must 0 · new Should 2 (a real-push test, the report refresh: applied in the final commit) ·
-  **Push gate: open**. The real-push cases (first push, empty commit, tag, deletion, dirty tree)
-  fail on the c99865f config at the tag push and pass on the fixed one.
+  Push gate: open. The real-push cases (first push, empty commit, tag, deletion, dirty tree)
+  fail on the c99865f config at the tag push and pass on the fixed one; the first-push skip seen
+  on the real `ci/108` push was not reproduced in the scratch repository.
+- Round 4 on `8541ba8`: 3 fixed · new Must 0 · new Should 0 · Nice 2 (wording, applied) ·
+  **Push gate: open**
 - Optional second review (owner's OpenAI account): ChatGPT/Codex not run (never a gate step)
 
 ## Pre-merge gate (head: the final commit of the branch)
@@ -39,7 +42,7 @@ AGENTS.md, CONTRIBUTING.md, ADR-0010. All fixed in `1f753fa`.)
 - `docs/decisions/ADR-0010-local-first-ci.md:36` `[adversarial][docs]` · sub-choice totals were
   430/320/360 for scores summing to 420/320/325 · fixed in `7213e9f`.
 - `lefthook.yml:24` `[correctness]` · lefthook skips a pre-push job when the push lists no file
-  (tag, deletion, empty commit): `files: echo justfile` + `: {files};` keep the tier on every
+  (proven red on a tag push): `files: echo justfile` + `: {files};` keep the tier on every
   push · fixed in `5415555`, proven by real pushes in `test-local-ci.sh` (round 3 Should).
 - Round 1 Should (all fixed in `1f753fa`): bootstrap merge recorded; main-matrix totals
   475/335/205; squash + re-gate on `main` recorded; `LEFTHOOK=0` on the attestation push; CodeQL
