@@ -9,10 +9,18 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Every check now runs locally through `just fast` / `check` / `gate` / `nightly` with a pinned
+  toolchain (`mise.toml`) and git hooks (lefthook); the GitHub workflows are removed and `main`
+  is merged only through `just merge <pr>` on a signed gate attestation (ADR-0010). The `dev`
+  extra gains `pip-audit`.
 - Renamed from can-sniffer to BusScope: the package, distribution and command are now
   `busscope`. Display preferences saved under the old application name are not migrated.
 - The Transmission tab and its transmitter are now omitted unless the application starts with
   `BUSSCOPE_ENABLE_TRANSMISSION=1` (ADR-0009).
+
+### Security
+
+- The `dev` extra requires pytest 9.0.3 or later (PYSEC-2026-1845, found by `pip-audit`).
 
 ### Added
 

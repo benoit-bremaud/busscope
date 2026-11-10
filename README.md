@@ -43,23 +43,19 @@ source .venv/bin/activate
 pip install -e '.[dev]'
 ```
 
-Use the separate test environment for isolated validation:
+Every check runs locally, never on GitHub ([ADR-0010](docs/decisions/ADR-0010-local-first-ci.md)).
+With [mise](https://mise.jdx.dev) and `uv` installed, install the pinned toolchain, the isolated
+test environment and the git hooks once per clone, then run the pre-push tier:
 
 ```bash
-python3 -m venv .venv-test
-.venv-test/bin/python -m pip install -e '.[dev]'
+mise x -- just setup
+mise x -- just check
 ```
 
-Run the quality checks from `.venv-test`:
-
-```bash
-.venv-test/bin/pytest
-.venv-test/bin/ruff check .
-.venv-test/bin/mypy
-```
-
-The same quality checks run automatically on pushes to `main` and on pull requests. GitHub
-Actions also runs secret detection, CodeQL analysis, dependency review, and OpenSSF Scorecard.
+`just check` runs Ruff, strict mypy, Interrogate, pytest with the coverage floor, Semgrep,
+pip-audit and gitleaks; the git hooks run the staged-file subset on commit, check the commit
+subject, and run the whole tier on push from a clean tree. See
+[`CONTRIBUTING.md`](CONTRIBUTING.md) for the pre-merge gate.
 
 Start the graphical application from the work environment:
 

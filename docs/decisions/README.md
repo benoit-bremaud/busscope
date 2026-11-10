@@ -22,3 +22,4 @@ The project name is still open; ADRs say "the project" until it is chosen.
 | [0007](ADR-0007-ai-agent-read-only-mcp.md) | AI agent: a read-only MCP server in the Python core | Accepted |
 | [0008](ADR-0008-signal-level-tooling.md) | Signal-level tooling: FX2 + PulseView through an isolated logic tap, Analog Discovery 3 later | Accepted |
 | [0009](ADR-0009-transmission-kill-switch.md) | Transmission kill switch: a default-off environment variable | Accepted |
+| [0010](ADR-0010-local-first-ci.md) | Local-first CI: every check runs on the laptop, no GitHub workflow | Accepted |
