@@ -54,7 +54,8 @@ mise x -- just check
 
 `just check` runs Ruff, strict mypy, Interrogate, pytest with the coverage floor, Semgrep,
 pip-audit and gitleaks; the git hooks run the staged-file subset on commit, check the commit
-subject, and run the whole tier on push from a clean tree. See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the pre-merge gate.
+subject, and run the whole tier on push from a clean tree. See
+[`CONTRIBUTING.md`](CONTRIBUTING.md) for the pre-merge gate.
 
 Start the graphical application from the work environment:
 

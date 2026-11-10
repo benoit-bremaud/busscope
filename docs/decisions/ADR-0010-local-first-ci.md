@@ -33,7 +33,7 @@ Dependency scan, a sub-choice:
 | 2 | Simplicity (one `dev` extra, one recipe line) | 30 | 4 | 3 | 5 |
 | 3 | Pinning (version under our control) | 20 | 4 (range in `pyproject.toml`) | 5 (mise) | 5 |
 | 4 | Cost (runtime, network) | 15 | 3 (PyPI advisory fetch) | 4 | 5 |
-| | **Total / 500** | **100** | **430** | 320 | 360 |
+| | **Total / 500** | **100** | **420** | 320 | 325 |
 
 ## Decision
 
@@ -56,15 +56,15 @@ Dependency scan, a sub-choice:
   which carries no attestation of its own, so `just gate` runs again on `main` after the merge.
 - Bootstrap: the first merge of this change happens before `.github/allowed_signers` and
   `scripts/attest.sh` exist on `main`, so its attestation cannot be verified against `main`;
-  that one merge goes through `gh pr merge --squash` with a recorded waiver (PROJECT_LOG.md).
-  Every later merge uses `just merge`.
+  that one merge goes through `gh pr merge --squash --match-head-commit <sha>` on the green
+  `gate` status, recorded in PROJECT_LOG.md; the note is verified by the next `just gate` on
+  `main`. Every later merge uses `just merge`.
 - `scripts/{attest,test-attest,check-commit-msg,check-cassettes}.sh` are verbatim copies of
   `~/.claude/scripts` (skill `local-ci` § Apply, step 1), kept byte-identical so a fix lands in one
   place and is re-copied; `check-cassettes.sh` has no caller here yet (no `record` recipe: the
   project calls no third-party API) and stays with the set rather than diverging from it.
 - Dropped without replacement: OpenSSF Scorecard (it needs GitHub) and CodeQL itself (skill
-  `local-ci` rule 4: free open-source tools only, and the CodeQL CLI terms limit it to GitHub
-  use; Semgrep CE covers SAST). The Semgrep `p/python` ruleset is fetched from the registry on
+  `local-ci` rule 4: free open-source tools only; Semgrep CE covers SAST). The Semgrep `p/python` ruleset is fetched from the registry on
   each run: the rules can change without a commit here, and `security` needs the network.
   Accepted over vendoring the rules (which would freeze known-bad gaps and need its own
   update chore).

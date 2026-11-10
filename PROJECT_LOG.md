@@ -204,11 +204,12 @@ ordinary commits from that PR's branch.
   from `~/.claude/scripts`, `scripts/test-local-ci.sh` (124 cases), `.github/allowed_signers`,
   `just merge <pr>` as the only merge path, branch protection on `main` = the `gate` status
   only. CodeQL → Semgrep CE `p/python`; Dependency review → pip-audit on `.venv-test` (MCDA
-  430 over osv-scanner 320: no lockfile), whose first run found pytest 8.4.2 (PYSEC-2026-1845):
+  420 over osv-scanner 320: no lockfile), whose first run found pytest 8.4.2 (PYSEC-2026-1845):
   the `dev` range moves to pytest 9. Scorecard dropped. Timings: `just fast` < 1 s, `just lint`
   3.3 s, `just test` 8.5 s (433 tests, coverage 98.95 %, interrogate 96.1 %), `just security`
   7.6 s, `just secrets` 0.4 s. Bootstrap merge: `.github/allowed_signers` and `attest.sh` are
   not on `main` before this PR, so `just merge` cannot verify it; this one merge goes through
-  `gh pr merge --squash` with `MERGE_GATE_WAIVER="bootstrap: allowed_signers not yet on main
-  #108"` after a green `just gate` on the head SHA. Nightly: systemd user units
+  `gh pr merge --squash --match-head-commit <sha>` on the green `gate` status after `just gate`
+  on the head SHA (no waiver: the status is green, only the note check against `main` waits for
+  the next `just gate` on `main`). Nightly: systemd user units
   `busscope-nightly.{service,timer}` (04:10) + `busscope-nightly-failed.service`.
