@@ -213,3 +213,7 @@ ordinary commits from that PR's branch.
   on the head SHA (no waiver: the status is green, only the note check against `main` waits for
   the next `just gate` on `main`). Nightly: systemd user units
   `busscope-nightly.{service,timer}` (04:10) + `busscope-nightly-failed.service`.
+
+## 2026-11-13 — nightly fix, semgrep 1.185.0 (#110, PR #111)
+
+The nightly failed at its `mise outdated` step: `pipx:semgrep` pinned 1.184.0, latest 1.185.0 (not the checkout, not the secret scans). Bumped `mise.toml` + `mise.lock`; `just check`, `just nightly` and `just gate` green; adversarial review 0 Must. Merged 8dbeb81. Gate note: `mise.toml` and `mise.lock` are on the gate tripwire list, so the gate ran with `GATE_CI_CHANGE=1` after the diff was read.
