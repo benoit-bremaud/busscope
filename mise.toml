@@ -17,7 +17,7 @@ trufflehog = "3.99.8"
 jq = "1.8.2" # nightly reads `mise outdated --json`
 # Semgrep Community Edition (SAST, replaces CodeQL). pipx backend: the version is pinned, its Python
 # dependencies are resolved at install time (accepted gap, ADR-0010).
-"pipx:semgrep" = "1.184.0"
+"pipx:semgrep" = "1.185.0"
 
 [settings]
 lockfile = true

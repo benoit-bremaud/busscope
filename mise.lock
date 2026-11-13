@@ -191,9 +191,9 @@ url_api = "https://api.github.com/repos/evilmartians/lefthook/releases/assets/63
 provenance = "github-attestations"
 
 [[tools."pipx:semgrep"]]
-version = "1.184.0"
+version = "1.185.0"
 backend = "pipx:semgrep"
-specifiers = ["1.184.0"]
+specifiers = ["1.185.0"]
 
 [[tools.python]]
 version = "3.12.16"
