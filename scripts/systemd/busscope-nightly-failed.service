@@ -1,0 +1,6 @@
+[Unit]
+Description=Desktop notification when the busscope nightly local CI fails
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/notify-send --urgency=critical "busscope local CI nightly failed" "journalctl --user -u busscope-nightly.service"

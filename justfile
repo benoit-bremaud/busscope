@@ -133,18 +133,29 @@ merge pr:
     sh "$verifier" verify gate "$sha"
     gh pr merge "$pr" --squash --match-head-commit "$sha"
 
-# L3 — nightly, systemd user timer (no time budget): deep secret history (TruffleHog, offline) and
-# toolchain drift: `mise outdated --bump` (without it an exact pin is never reported) exits 0
-# whatever it finds, so the rows of this mise.toml (not the global config) are read from its JSON
-# and any of them fails the tier, except python: `--bump` names the next minor, and the 3.12 line
-# is deliberate (bumped by hand with requires-python).
-# L3 — nightly (systemd timer): check + TruffleHog + toolchain drift
-nightly: check
+# L3 — nightly, systemd user timer (no time budget), on a clean origin/main worktree
+# (scripts/systemd/, agents-skills#427). Only vulnerabilities and secrets fail it: `security`
+# (Semgrep, pip-audit), `secrets` (gitleaks) and TruffleHog (offline, deep history). Lint, tests and
+# toolchain drift print a WARNING: `mise outdated --bump` (without it an exact pin is never
+# reported) exits 0 whatever it finds, so the rows of this mise.toml (not the global config) are
+# read from its JSON, except python: `--bump` names the next minor, and the 3.12 line is deliberate.
+# L3 — nightly (systemd timer): vulnerabilities and secrets fail, lint, tests and drift warn
+nightly:
     #!/bin/sh
-    set -eu
-    trufflehog git "file://$PWD" --no-verification --fail --no-update
-    json=$(mise outdated --bump --json)
-    printf '%s' "$json" | jq -e 'type == "object" and all(.[]; .source.path != null)' > /dev/null || { echo "nightly: mise outdated --json changed shape, fix the filter" >&2; exit 1; }
-    stale=$(printf '%s' "$json" | jq -r --arg here "$PWD/mise.toml" 'to_entries[] | select(.value.source.path == $here) | select(.key != "python") | "\(.key) \(.value.current) -> \(.value.latest)"')
-    [ -z "$stale" ] || { printf 'nightly: bump mise.toml, then mise install && mise lock:\n%s\n' "$stale" >&2; exit 1; }
-    echo "nightly: toolchain up to date"
+    set -u
+    rc=0
+    warn() { "$@" || echo "WARNING nightly: $* (drift, not a failure)" >&2; }
+    drift() {
+      json=$(mise outdated --bump --json) || return 1
+      printf '%s' "$json" | jq -e 'type == "object" and all(.[]; .source.path != null)' > /dev/null || { echo "nightly: mise outdated --json changed shape, fix the filter" >&2; return 1; }
+      stale=$(printf '%s' "$json" | jq -r --arg here "$PWD/mise.toml" 'to_entries[] | select(.value.source.path == $here) | select(.key != "python") | "\(.key) \(.value.current) -> \(.value.latest)"')
+      [ -z "$stale" ] || { printf 'nightly: bump mise.toml, then mise install && mise lock:\n%s\n' "$stale" >&2; return 1; }
+      echo "nightly: toolchain up to date"
+    }
+    warn just lint
+    warn just test
+    just security || rc=1
+    just secrets || rc=1
+    trufflehog git "file://$PWD" --no-verification --fail --no-update || rc=1
+    warn drift
+    exit "$rc"
