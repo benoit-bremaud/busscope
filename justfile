@@ -9,7 +9,8 @@
 #   L1 check    pre-push hook, review-local --push     lint + test + security + secrets        < 3 min
 #   L2 gate     review-local § 2b, on the pushed head  check + SonarQube, then the attestation  5–15 min
 #               before every merge
-#   L3 nightly  systemd user timer                     check + TruffleHog + mise outdated
+#   L3 nightly  systemd user timer, clean origin/main  security + secrets + TruffleHog fail;
+#               worktree (scripts/systemd/)            lint, test, mise outdated only warn
 #
 # Then: `just merge <pr>` (refuses without the gate attestation on the head SHA).
 
@@ -134,7 +135,8 @@ merge pr:
     gh pr merge "$pr" --squash --match-head-commit "$sha"
 
 # L3 — nightly, systemd user timer (no time budget), on a clean origin/main worktree
-# (scripts/systemd/, agents-skills#427). Only vulnerabilities and secrets fail it: `security`
+# (scripts/systemd/, agents-skills#427); gitleaks and TruffleHog read every ref of the shared
+# repository, local branches included. Only vulnerabilities and secrets fail it: `security`
 # (Semgrep, pip-audit), `secrets` (gitleaks) and TruffleHog (offline, deep history). Lint, tests and
 # toolchain drift print a WARNING: `mise outdated --bump` (without it an exact pin is never
 # reported) exits 0 whatever it finds, so the rows of this mise.toml (not the global config) are

@@ -45,7 +45,9 @@ Dependency scan, a sub-choice:
   pip-audit, gitleaks on the whole history), `gate` before every merge on the pushed head
   (`check`, then pytest with `coverage.xml` and `sonar-scanner` waiting for the quality gate,
   then the signed attestation), `nightly` on a systemd user timer (`check`, TruffleHog, toolchain
-  drift).
+  drift). Amended 2026-11-15 (#113, agents-skills#427): the nightly runs on a clean `origin/main`
+  worktree (`scripts/systemd/`); only `security`, `secrets` and TruffleHog fail it, lint, tests
+  and toolchain drift print a `WARNING`.
 - The toolchain is pinned in `mise.toml` and `mise.lock` (Python 3.12 as the removed workflow,
   just, lefthook, gitleaks, trufflehog, jq, Semgrep); the Python checkers stay in the `dev` extra of
   `pyproject.toml` and run from `.venv-test`. `just setup` installs everything once per clone.
