@@ -1,0 +1,25 @@
+[Unit]
+Description=Nightly local CI of busscope: just nightly, tier L3 (#108), on a clean origin/main worktree (agents-skills#427)
+OnFailure=busscope-nightly-failed.service
+
+[Service]
+Type=oneshot
+# The user manager's PATH has no ~/.local/bin, where mise lives; mise brings the pinned tools.
+Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
+Environment=REPO=%h/Documents/02_personal/busscope WT=%h/.cache/nightly/busscope
+# Never the working checkout: it may sit on a feature branch, dirty or behind origin/main.
+# '-': a catch-up run before the network is up checks the last fetched origin/main (the venv
+# install and the Semgrep ruleset still need the network, so such a run may fail and notify).
+ExecStartPre=-/usr/bin/git -C ${REPO} fetch --quiet origin main
+ExecStartPre=/bin/sh -c 'test -d "$WT" || { git -C "$REPO" worktree prune && git -C "$REPO" worktree add --detach "$WT" origin/main; }'
+ExecStartPre=/usr/bin/git -C ${WT} reset --quiet --hard origin/main
+# Without -x: the ignored .venv-test survives, so the install below is incremental.
+ExecStartPre=/usr/bin/git -C ${WT} clean -ffdq
+ExecStartPre=%h/.local/bin/mise trust --quiet ${WT}
+# `just setup` without the lefthook install (the hooks belong to the working checkout); the venv
+# is rebuilt when venv-guard refuses it (missing, or a new Python pin), and upgraded within the
+# pyproject.toml ranges so pip-audit sees what a fresh setup would install.
+ExecStartPre=/bin/sh -c 'cd "$WT" && mise install --quiet && { mise x -- just venv-guard > /dev/null 2>&1 || { rm -rf .venv-test && mise x -- python -m venv .venv-test; }; } && .venv-test/bin/python -m pip install --quiet --upgrade --upgrade-strategy eager -e ".[dev]"'
+ExecStart=/bin/sh -c 'cd "$WT" && exec mise x -- just nightly'
+# A oneshot has no timeout: a hung fetch would block the timer for good.
+TimeoutStartSec=2h

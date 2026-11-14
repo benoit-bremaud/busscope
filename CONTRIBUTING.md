@@ -55,7 +55,11 @@ The tiers, each one a `just` recipe (`just --list` describes them):
 | L0 | `just fast` | pre-commit hook | staged secrets (gitleaks), Ruff on the staged files; the commit-msg hook checks the subject |
 | L1 | `just check` | pre-push hook, before a pull request | Ruff lint and format, strict mypy, Interrogate ≥ 90 %, pytest with coverage ≥ 90 %, the wiring and attestation tests, Semgrep CE, pip-audit, gitleaks on the history |
 | L2 | `just gate` | on the pushed head, before every merge | `check`, then SonarQube with the quality-gate wait, then the signed `gate` attestation |
-| L3 | `just nightly` | systemd user timer | `check`, TruffleHog, toolchain drift |
+| L3 | `just nightly` | systemd user timer, on a clean `origin/main` worktree | Semgrep, pip-audit, gitleaks and TruffleHog fail it; lint, tests and toolchain drift only print a `WARNING` |
+
+The nightly units are versioned in `scripts/systemd/`; install or update them with
+`cp scripts/systemd/busscope-nightly* ~/.config/systemd/user/ && systemctl --user daemon-reload &&
+systemctl --user enable --now busscope-nightly.timer`.
 
 Run the recipes as `mise x -- just <recipe>` from a shell that does not activate mise. The
 pre-push hook refuses a dirty working tree before running `check`.

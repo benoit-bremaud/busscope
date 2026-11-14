@@ -1,7 +1,7 @@
 #!/bin/sh
 # Tests for the local CI wiring (#108, skill local-ci rule 7, ADR-0010): the four tiers exist and
-# compose (check = lint + test + security + secrets; nightly ⊇ check; the venv guard fronts every
-# Python recipe), no GitHub workflow is left, the Python pin of mise.toml is what the venv guard
+# compose (check = lint + test + security + secrets; nightly has no dependency; the venv guard
+# fronts every Python recipe), no GitHub workflow is left, the Python pin of mise.toml is what the venv guard
 # reads, lefthook.yml is valid and wires the commit-msg and pre-push hooks, the commit-msg check
 # accepts and refuses the right subjects; then, in a throwaway repository with stubbed boundaries
 # (just steps, attest.sh, gh, sonar-scanner, curl, mise, the checkers): gate refuses a dirty tree, a
@@ -11,8 +11,8 @@
 # attestation, fetches the PR head from origin, merges with --squash --match-head-commit through the
 # verifier of origin/main and propagates a gh failure; sonar refuses a missing scanner, token or
 # server, failed tests and a failed quality gate, reads the token file; venv-guard refuses a missing
-# or wrong-version venv; nightly fails on a stale pin, a changed JSON shape or TruffleHog, and
-# ignores the Python line and other configs; L0 (`just fast`) passes a clean staged change but
+# or wrong-version venv; nightly fails only on security, secrets or TruffleHog, warns on lint, tests,
+# a stale pin or a changed JSON shape, and ignores the Python line and other configs; L0 (`just fast`) passes a clean staged change but
 # refuses a staged secret and a ruff error.
 # Needs mise, just, lefthook, gitleaks and the project's .venv-test (`just setup`):
 #   mise x -- sh scripts/test-local-ci.sh
@@ -47,7 +47,7 @@ for r in fast check gate nightly setup merge sonar; do
 done
 deps() { just --show "$1" | grep -E "^$1( |:)" | sed 's/.*: *//'; } # deps <recipe>
 [ "$(deps check)" = "lint test security secrets" ] || fail "check must be exactly lint test security secrets"; ok
-deps nightly | grep -qw check || fail "nightly does not depend on check"; ok
+[ -z "$(deps nightly)" ] || fail "nightly must not depend on another recipe (lint and test only warn)"; ok
 for r in lint test security sonar; do
   deps "$r" | grep -qw venv-guard || fail "$r does not run venv-guard first"; ok
 done
@@ -239,20 +239,29 @@ mv .venv-test "$box/venv-aside"
 box_run 1 "venv-guard: missing venv refused" "run just setup" -- "$real_just" lint
 mv "$box/venv-aside" .venv-test
 
-# nightly: check first, TruffleHog offline, then the drift read from the JSON of this mise.toml.
+# nightly: every step runs; only security, secrets and TruffleHog fail it, the rest warns.
 here="$box/repo/mise.toml"
 row() { printf '"%s":{"current":"%s","latest":"%s","source":{"path":"%s"}}' "$1" "$2" "$3" "$4"; } # row <tool> <current> <latest> <path>
 box_run 0 "nightly: up to date" "toolchain up to date" -- env MISE_JSON='{}' "$real_just" nightly
 expect '^trufflehog git file://.* --no-verification --fail --no-update$' "nightly did not run TruffleHog offline"
 expect '^mise outdated --bump --json$' "nightly did not read mise outdated"
-grep -q '^ruff check' "$LOG" && grep -q '^semgrep' "$LOG" && grep -q '^gitleaks git' "$LOG" || { cat "$LOG"; fail "nightly did not run check first"; }; ok
-box_run 1 "nightly: stale pin refused" "just 1.0.0 -> 2.0.0" -- env MISE_JSON="{$(row just 1.0.0 2.0.0 "$here")}" "$real_just" nightly
+for r in lint test security secrets; do expect "^just $r\$" "nightly did not run just $r"; done
+box_run 0 "nightly: stale pin warns" "WARNING nightly: drift" -- env MISE_JSON="{$(row just 1.0.0 2.0.0 "$here")}" "$real_just" nightly
+grep -qF 'just 1.0.0 -> 2.0.0' "$work/out" || { cat "$work/out"; fail "nightly did not name the stale pin"; }; ok
 box_run 0 "nightly: the Python line is ignored" "toolchain up to date" -- env MISE_JSON="{$(row python 3.12.0 3.14.0 "$here")}" "$real_just" nightly
 box_run 0 "nightly: another config's row is ignored" "toolchain up to date" -- env MISE_JSON="{$(row just 1.0.0 2.0.0 "$box/home/mise.toml")}" "$real_just" nightly
-box_run 1 "nightly: a changed JSON shape refused" "changed shape" -- env MISE_JSON='[]' "$real_just" nightly
-box_run 1 "nightly: a row without source refused" "changed shape" -- env MISE_JSON='{"just":{"current":"1","latest":"2"}}' "$real_just" nightly
+box_run 0 "nightly: a changed JSON shape warns" "changed shape" -- env MISE_JSON='[]' "$real_just" nightly
+box_run 0 "nightly: a row without source warns" "changed shape" -- env MISE_JSON='{"just":{"current":"1","latest":"2"}}' "$real_just" nightly
+for s in lint test; do
+  box_run 0 "nightly: failing $s warns" "WARNING nightly: just $s" -- env FAIL_STEP=$s MISE_JSON='{}' "$real_just" nightly
+done
+for s in security secrets; do
+  box_run 1 "nightly: failing $s fails it" "" -- env FAIL_STEP=$s MISE_JSON='{}' "$real_just" nightly
+  expect '^just secrets$' "nightly skipped secrets after a failing $s"
+  expect '^trufflehog' "nightly stopped after a failing $s"
+done
 box_run 1 "nightly: TruffleHog finding fails it" "" -- env TRUFFLEHOG_FAIL=1 MISE_JSON='{}' "$real_just" nightly
-no_line '^mise' "nightly read the drift after a TruffleHog failure"
+expect '^mise outdated' "nightly skipped the drift after a TruffleHog failure"
 unset MISE_TRUSTED_CONFIG_PATHS LOG PR_HEAD
 
 # L0 in a throwaway repository holding this repository's hook config, scripts and real venv.

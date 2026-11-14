@@ -1,0 +1,10 @@
+[Unit]
+Description=Nightly local CI of busscope (catches up after the PC was off)
+
+[Timer]
+OnCalendar=*-*-* 04:10:00
+Persistent=true
+RandomizedDelaySec=10min
+
+[Install]
+WantedBy=timers.target
