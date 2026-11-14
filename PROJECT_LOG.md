@@ -217,3 +217,14 @@ ordinary commits from that PR's branch.
 ## 2026-11-13 — nightly fix, semgrep 1.185.0 (#110, PR #111)
 
 The nightly failed at its `mise outdated` step: `pipx:semgrep` pinned 1.184.0, latest 1.185.0 (not the checkout, not the secret scans). Bumped `mise.toml` + `mise.lock`; `just check`, `just nightly` and `just gate` green; adversarial review 0 Must. Merged 8dbeb81. Gate note: `mise.toml` and `mise.lock` are on the gate tripwire list, so the gate ran with `GATE_CI_CHANGE=1` after the diff was read.
+
+## 2026-11-15
+
+- **PR #114** — `fix(ci): run the nightly on a clean origin/main worktree` (#113,
+  `fix/113-nightly-clean-worktree`), applying agents-skills#427. The three nightly units are
+  versioned in `scripts/systemd/`; the service runs in `~/.cache/nightly/busscope` (fetched,
+  reset, cleaned each run; venv rebuilt when venv-guard refuses it), never the working checkout.
+  `just nightly` fails only on `security`, `secrets` and TruffleHog; lint, tests and toolchain
+  drift print a `WARNING`. Adversarial review: round 1 closed (4 Must: venv on a new Python pin,
+  three stale doc copies), round 2 open. Left open: a failing fetch still gives a green run on
+  the last fetched `origin/main` (warning only in the journal comment).
